@@ -1,0 +1,18 @@
+{
+  "name": "Acero & Roca — Portal Editorial Minero",
+  "short_name": "Acero y Roca",
+  "description": "Portal de columnista especializado en minería: redacción, curso, proyectos y agente IA.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#CCFF00",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
