@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Note } from '../context/AppContext';
 import { 
@@ -12,7 +12,14 @@ import {
   LayoutTemplate,
   History,
   FileDown,
-  Copy
+  Copy,
+  Bold,
+  Italic,
+  Heading1,
+  Heading2,
+  Quote,
+  List,
+  Link as LinkIcon
 } from 'lucide-react';
 import { COLUMN_TEMPLATES } from '../data/columnTemplates';
 import { getNoteVersions, saveNoteVersion } from '../hooks/useNoteVersions';
@@ -39,6 +46,7 @@ export const Editor: React.FC = () => {
   const [showVersions, setShowVersions] = useState(false);
   const [versions, setVersions] = useState<ReturnType<typeof getNoteVersions>>([]);
   const [copyMsg, setCopyMsg] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
   const wordPct = activeNote
@@ -101,6 +109,23 @@ export const Editor: React.FC = () => {
     if (window.confirm('¿Estás seguro de que deseas eliminar este borrador?')) {
       await deleteNote(id);
     }
+  };
+
+  const insertFormatting = (before: string, after: string = '') => {
+    if (!activeNote || !textareaRef.current) return;
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = activeNote.content;
+    const selectedText = text.substring(start, end);
+    const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+    
+    updateNote(activeNote.id, { content: newText });
+    
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + before.length, end + before.length);
+    }, 0);
   };
 
   // Convertidor simple de Markdown a HTML para previsualización e impresión
@@ -210,7 +235,7 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
               <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Mis Columnas</span>
               <button 
                 onClick={() => createNote('Nueva Columna', '# Nueva Columna\n\n')}
-                className="p-1 rounded bg-white/5 hover:bg-white/10 text-lime transition-colors"
+                className="p-1 rounded bg-white/5 hover:bg-white/10 text-accent-gold transition-colors"
                 title="Nueva Nota"
               >
                 <Plus size={16} />
@@ -224,7 +249,7 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
                   onClick={() => setActiveNoteId(note.id)}
                   className={`note-list-item group ${
                     note.id === activeNoteId 
-                      ? 'bg-lime/10 border-lime/40 text-white' 
+                      ? 'bg-accent-gold/10 border-accent-gold/40 text-white' 
                       : 'bg-white/[0.01] text-text-secondary hover:bg-white/5'
                   }`}
                 >
@@ -347,7 +372,7 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
                 </div>
               </div>
 
-              {copyMsg && <p className="text-xs text-lime no-print">{copyMsg}</p>}
+              {copyMsg && <p className="text-xs text-accent-gold no-print">{copyMsg}</p>}
 
               {showTemplates && (
                 <div className="glass-panel p-4 grid grid-cols-1 md:grid-cols-2 gap-2 no-print">
@@ -374,12 +399,27 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
               )}
 
               {activeTab === 'editor' ? (
-                <textarea
-                  value={activeNote.content}
-                  onChange={handleContentChange}
-                  placeholder="Comienza a redactar tu columna en Markdown..."
-                  className="editor-text-area no-print"
-                />
+                <div className="flex flex-col flex-1 min-h-0 border border-border-color rounded-xl overflow-hidden bg-white/[0.01] transition-colors focus-within:border-accent-gold focus-within:bg-white/[0.02] focus-within:shadow-[0_0_15px_rgba(204,255,0,0.05)]">
+                  <div className="flex items-center gap-1 p-2 border-b border-border-color bg-black/20 no-print overflow-x-auto">
+                    <button onClick={() => insertFormatting('**', '**')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Negrita"><Bold size={14} /></button>
+                    <button onClick={() => insertFormatting('*', '*')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Cursiva"><Italic size={14} /></button>
+                    <div className="w-px h-4 bg-border-color mx-1"></div>
+                    <button onClick={() => insertFormatting('# ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Título 1"><Heading1 size={14} /></button>
+                    <button onClick={() => insertFormatting('## ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Título 2"><Heading2 size={14} /></button>
+                    <div className="w-px h-4 bg-border-color mx-1"></div>
+                    <button onClick={() => insertFormatting('> ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Cita"><Quote size={14} /></button>
+                    <button onClick={() => insertFormatting('- ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Lista"><List size={14} /></button>
+                    <div className="w-px h-4 bg-border-color mx-1"></div>
+                    <button onClick={() => insertFormatting('[', '](url)')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Enlace"><LinkIcon size={14} /></button>
+                  </div>
+                  <textarea
+                    ref={textareaRef}
+                    value={activeNote.content}
+                    onChange={handleContentChange}
+                    placeholder="Comienza a redactar tu columna en Markdown..."
+                    className="editor-text-area border-0 rounded-none bg-transparent focus:bg-transparent focus:shadow-none no-print w-full flex-1 p-4 outline-none resize-none"
+                  />
+                </div>
               ) : (
                 <div className="w-full flex-1 bg-white border border-border-color rounded-xl overflow-y-auto no-print">
                   {/* Vista previa simulada de impresión en pantalla */}

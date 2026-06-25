@@ -52,12 +52,12 @@ export const Sidebar: React.FC = () => {
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setIsOpen(true)}
-            className="p-2 text-white hover:text-lime rounded-lg bg-white/5 transition-colors"
+            className="p-2 text-white hover:text-accent-gold rounded-lg bg-white/5 transition-colors"
           >
             <Menu size={20} />
           </button>
           <div className="flex items-center gap-1.5">
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-amber-700 to-amber-500 flex items-center justify-center font-bold text-black text-xs">
+            <div className="w-6 h-6 rounded-md bg-accent-gold flex items-center justify-center font-bold text-white text-xs">
               A
             </div>
             <span className="font-display font-bold text-sm text-white tracking-tight leading-none">ACERO & ROCA</span>

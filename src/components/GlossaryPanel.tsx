@@ -25,7 +25,7 @@ export const GlossaryPanel: React.FC = () => {
       <header className="dashboard-hero">
         <div className="dashboard-hero__content">
           <h2 className="dashboard-hero__title flex items-center gap-3">
-            <BookMarked className="text-lime" size={28} />
+            <BookMarked className="text-accent-gold" size={28} />
             Glosario <span className="text-gradient-lime">Minero</span>
           </h2>
           <p className="dashboard-hero__subtitle">
@@ -50,18 +50,24 @@ export const GlossaryPanel: React.FC = () => {
 
       <div className="glossary-grid">
         {filtered.length === 0 ? (
-          <p className="text-center text-text-muted py-8 text-sm col-span-full">No hay términos. Completa módulos del curso o agrega los tuyos.</p>
+          <p className="text-center text-text-muted py-12 text-sm col-span-full">No hay términos. Completa módulos del curso o agrega los tuyos.</p>
         ) : (
           filtered.map(g => (
-            <div key={g.id} className="glass-panel glossary-term-card flex justify-between gap-4 items-start">
-              <div className="min-w-0">
-                <h4 className="font-bold text-lime text-base">{g.term}</h4>
-                <p className="text-sm text-text-secondary mt-2 leading-relaxed">{g.definition}</p>
-                {g.source && <span className="text-[10px] text-text-muted mt-2 block">Fuente: {g.source}</span>}
+            <div key={g.id} className="glass-panel glossary-term-card group">
+              <div className="flex justify-between items-start gap-4">
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-accent-gold text-base mb-2">{g.term}</h4>
+                  <p className="text-sm text-text-secondary leading-relaxed">{g.definition}</p>
+                  {g.source && (
+                    <span className="text-[10px] text-text-muted mt-3 block uppercase tracking-wider font-medium">
+                      Fuente: {g.source}
+                    </span>
+                  )}
+                </div>
+                <button type="button" onClick={() => removeGlossaryTerm(g.id)} className="text-text-muted hover:text-accent-red p-1.5 rounded-md hover:bg-accent-red/10 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                  <Trash2 size={14} />
+                </button>
               </div>
-              <button type="button" onClick={() => removeGlossaryTerm(g.id)} className="text-text-muted hover:text-accent-red p-1">
-                <Trash2 size={14} />
-              </button>
             </div>
           ))
         )}

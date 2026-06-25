@@ -32,15 +32,15 @@ export const Settings: React.FC = () => {
   return (
     <div className="main-content main-content--scroll max-w-2xl animate-fade-in">
       {/* Header */}
-      <header className="flex justify-between items-center pb-4 border-b border-border-color">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-lime/10 rounded-xl text-lime lime-glow">
-            <SettingsIcon size={24} />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold font-display text-white">Configuración del Sistema</h2>
-            <p className="text-xs text-text-secondary">Personaliza tu perfil editorial y las conexiones a los servicios de Inteligencia Artificial y Base de Datos</p>
-          </div>
+      <header className="dashboard-hero">
+        <div className="dashboard-hero__content">
+          <h2 className="dashboard-hero__title flex items-center gap-3">
+            <SettingsIcon className="text-accent-gold" size={28} />
+            Configuración del <span className="text-gradient-lime">Sistema</span>
+          </h2>
+          <p className="dashboard-hero__subtitle">
+            Personaliza tu perfil editorial y las conexiones a los servicios de IA y Base de Datos.
+          </p>
         </div>
       </header>
 
@@ -57,7 +57,7 @@ export const Settings: React.FC = () => {
         {/* Sección 1: Perfil de Columnista */}
         <div className="glass-panel p-5 flex flex-col gap-4">
           <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-            <User size={18} className="text-lime" />
+            <User size={18} className="text-accent-gold" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-white">Perfil del Columnista</h3>
           </div>
 
@@ -80,7 +80,7 @@ export const Settings: React.FC = () => {
         {/* Sección: Apariencia */}
         <div className="glass-panel p-5 flex flex-col gap-4">
           <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-            <Palette size={18} className="text-lime" />
+            <Palette size={18} className="text-accent-gold" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-white">Apariencia</h3>
           </div>
           <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
@@ -140,8 +140,8 @@ export const Settings: React.FC = () => {
               onChange={(e) => setGeminiModel(e.target.value)}
               className="glass-input text-sm"
             >
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Recomendado: Ultra veloz y preciso)</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro (Razonamiento profundo y técnico complejo)</option>
+              <option value="gemini-3.5-flash">Gemini 3.5 Flash (Recomendado: Ultra veloz y preciso)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Razonamiento profundo y técnico complejo)</option>
             </select>
             <span className="text-[10px] text-text-muted mt-1">
               Las peticiones de IA se procesan de manera segura a través de Vercel Serverless Functions para proteger tu API Key.
@@ -180,7 +180,7 @@ export const Settings: React.FC = () => {
           <div className="text-xs text-text-secondary bg-black/20 p-4 rounded-lg flex flex-col gap-2 leading-relaxed">
             <span className="font-bold text-white">¿Cómo activar la base de datos en Supabase?</span>
             <ol className="list-decimal list-inside flex flex-col gap-1.5 text-text-muted text-[11px]">
-              <li>Crea un proyecto gratis en <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-lime hover:underline">Supabase.com</a>.</li>
+              <li>Crea un proyecto gratis en <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-accent-gold hover:underline">Supabase.com</a>.</li>
               <li>Abre el editor SQL de Supabase y ejecuta el script provisto <code className="text-white bg-white/10 px-1 py-0.5 rounded text-[10px]">supabase_schema.sql</code>.</li>
               <li>Crea un archivo <code className="text-white bg-white/10 px-1 py-0.5 rounded text-[10px]">.env</code> en el directorio raíz de este proyecto con tus credenciales:</li>
             </ol>

@@ -32,7 +32,7 @@ export const ProjectsPanel: React.FC = () => {
       <header className="dashboard-hero">
         <div className="dashboard-hero__content">
           <h2 className="dashboard-hero__title flex items-center gap-3">
-            <MapPin className="text-lime" size={28} />
+            <MapPin className="text-accent-gold" size={28} />
             Mapa de <span className="text-gradient-lime">Proyectos</span>
           </h2>
           <p className="dashboard-hero__subtitle">
@@ -94,7 +94,8 @@ export const ProjectsPanel: React.FC = () => {
             {project.investment && <div><dt>Inversión est.</dt><dd>{project.investment}</dd></div>}
             <div className="col-span-2"><dt>Estado</dt><dd>{project.status}</dd></div>
           </dl>
-          <p className="text-sm text-text-secondary leading-relaxed mt-4 p-4 rounded-xl bg-white/[0.03] border border-white/5">
+          <p className="text-sm text-text-secondary leading-relaxed mt-4 p-4 rounded-lg bg-bg-primary border border-border-color">
+            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold block mb-2">Resumen Clave</span>
             {project.highlight}
           </p>
           <div className="flex gap-2 mt-6">

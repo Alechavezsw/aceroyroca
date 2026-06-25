@@ -38,7 +38,7 @@ export const MiningCourse: React.FC = () => {
       <header className="dashboard-hero">
         <div className="dashboard-hero__content">
           <h2 className="dashboard-hero__title flex items-center gap-3">
-            <GraduationCap className="text-lime" size={28} />
+            <GraduationCap className="text-accent-gold" size={28} />
             <span>Curso de <span className="text-gradient-lime">Minería</span></span>
           </h2>
           <p className="dashboard-hero__subtitle">
@@ -71,7 +71,7 @@ export const MiningCourse: React.FC = () => {
                   <span className="text-sm font-semibold text-white block truncate">{stage.title}</span>
                   <span className="text-[10px] text-text-muted">{stage.modules.length} módulos</span>
                 </div>
-                {stageDone ? <CheckCircle size={16} className="text-lime shrink-0" /> : <ChevronRight size={14} className="text-text-muted shrink-0" />}
+                {stageDone ? <CheckCircle size={16} className="text-accent-emerald shrink-0" /> : <ChevronRight size={14} className="text-text-muted shrink-0" />}
               </button>
             );
           })}
@@ -91,7 +91,7 @@ export const MiningCourse: React.FC = () => {
                     className="list-row text-left"
                   >
                     <div className="flex items-center gap-3">
-                      {isDone(mod.id) ? <CheckCircle size={18} className="text-lime" /> : <Circle size={18} className="text-text-muted" />}
+                      {isDone(mod.id) ? <CheckCircle size={18} className="text-accent-emerald" /> : <Circle size={18} className="text-text-muted" />}
                       <div>
                         <span className="text-sm font-semibold text-white">Módulo {idx + 1}: {mod.title}</span>
                         <span className="text-xs text-text-muted block">{mod.duration}</span>
@@ -104,7 +104,7 @@ export const MiningCourse: React.FC = () => {
             </div>
           ) : (
             <div className="glass-panel course-module-panel flex flex-col">
-              <button type="button" className="text-xs text-lime hover:underline self-start" onClick={() => setActiveModuleId(null)}>
+              <button type="button" className="text-xs text-accent-gold hover:underline self-start" onClick={() => setActiveModuleId(null)}>
                 ← Volver a {activeStage.title}
               </button>
               <div className="flex items-start justify-between gap-4">
@@ -113,7 +113,7 @@ export const MiningCourse: React.FC = () => {
                   <span className="text-xs text-text-muted">{activeModule.duration} · Etapa {activeStage.number}</span>
                 </div>
                 {isDone(activeModule.id) && (
-                  <span className="text-xs bg-lime/15 text-lime px-2 py-1 rounded-full border border-lime/30">Completado</span>
+                  <span className="text-xs bg-accent-emerald/15 text-accent-emerald px-2 py-1 rounded-full border border-accent-emerald/30">Completado</span>
                 )}
               </div>
               <div className="course-module-content">{renderContent(activeModule.content)}</div>
@@ -124,7 +124,7 @@ export const MiningCourse: React.FC = () => {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {activeModule.keyTerms.map(t => (
-                      <span key={t} className="text-xs bg-lime/10 text-lime px-2.5 py-1 rounded-full border border-lime/20">{t}</span>
+                      <span key={t} className="text-xs bg-accent-gold/10 text-accent-gold px-2.5 py-1 rounded-full border border-accent-gold/20">{t}</span>
                     ))}
                   </div>
                 </div>

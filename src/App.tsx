@@ -52,7 +52,7 @@ const MainAppContent: React.FC = () => {
   };
 
   return (
-    <div className="app-container noise-overlay">
+    <div className="app-container">
       <Sidebar />
       <div className="app-main">
         {renderSection()}

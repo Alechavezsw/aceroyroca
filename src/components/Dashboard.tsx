@@ -108,7 +108,7 @@ export const Dashboard: React.FC = () => {
           { symbol: 'PLATA', name: 'Plata', price: 29.15, unit: 'USD/oz', change: -0.3 }
         ]).map(c => (
           <div key={c.symbol} className="ticker-card">
-            <span className="font-bold text-lime">{c.name}</span>
+            <span className="font-bold text-accent-gold">{c.name}</span>
             <span className="ticker-price">
               {c.unit.startsWith('USD') ? '$' : ''}{c.price.toLocaleString('es-AR', { maximumFractionDigits: 2 })} {c.unit}
             </span>
@@ -123,7 +123,7 @@ export const Dashboard: React.FC = () => {
       <header className="dashboard-hero">
         <div className="dashboard-hero__content">
           <h2 className="dashboard-hero__title">
-            <span className="text-gradient-lime">Hola, Carlos</span> 👋
+            <span className="text-accent-gold">Hola, Carlos</span> 👋
           </h2>
           <p className="dashboard-hero__subtitle">
             Esto es lo que está pasando hoy en tu espacio editorial de Acero & Roca.
@@ -194,7 +194,7 @@ export const Dashboard: React.FC = () => {
               <FileText size={20} />
               Borradores de Columnas
             </h3>
-            <button onClick={() => setActiveSection('editor')} className="text-xs text-lime hover:underline flex items-center gap-1">
+            <button onClick={() => setActiveSection('editor')} className="text-xs text-accent-gold hover:underline flex items-center gap-1">
               Ver todos <ArrowRight size={12} />
             </button>
           </div>
@@ -223,7 +223,7 @@ export const Dashboard: React.FC = () => {
                         ? 'bg-accent-emerald/15 text-accent-emerald border border-accent-emerald/20' 
                         : note.status === 'review'
                         ? 'bg-accent-steel/15 text-accent-steel border border-accent-steel/20'
-                        : 'bg-lime/10 text-lime border border-amber-600/20'
+                        : 'bg-accent-gold/10 text-accent-gold border border-accent-gold/20'
                     }`}>
                       {note.status === 'published' ? 'Publicado' : note.status === 'review' ? 'Revisión' : 'Borrador'}
                     </span>
@@ -241,7 +241,7 @@ export const Dashboard: React.FC = () => {
               <CheckSquare size={20} />
               Tareas Urgentes
             </h3>
-            <button onClick={() => setActiveSection('tasks')} className="text-xs text-lime hover:underline flex items-center gap-1">
+            <button onClick={() => setActiveSection('tasks')} className="text-xs text-accent-gold hover:underline flex items-center gap-1">
               Tablero <ArrowRight size={12} />
             </button>
           </div>
@@ -263,7 +263,7 @@ export const Dashboard: React.FC = () => {
                         task.priority === 'high' 
                           ? 'bg-red-500/15 text-red-400 border border-red-500/20' 
                           : task.priority === 'medium'
-                          ? 'bg-lime/15 text-lime border border-lime/20'
+                          ? 'bg-accent-gold/15 text-accent-gold border border-accent-gold/20'
                           : 'bg-blue-500/15 text-blue-400 border border-blue-500/20'
                       }`}>
                         {task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja'}
@@ -329,7 +329,7 @@ export const Dashboard: React.FC = () => {
                       href={item.link} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="text-sm font-bold text-white hover:text-lime transition-colors line-clamp-2 leading-snug group-hover:underline"
+                      className="text-sm font-bold text-white hover:text-accent-gold transition-colors line-clamp-2 leading-snug group-hover:underline"
                     >
                       {item.title}
                     </a>
@@ -344,7 +344,7 @@ export const Dashboard: React.FC = () => {
                     </span>
                     <button 
                       onClick={() => handleDiscussWithAI(item)}
-                      className="text-lime font-semibold hover:text-white flex items-center gap-1 transition-colors"
+                      className="text-accent-gold font-semibold hover:text-white flex items-center gap-1 transition-colors"
                     >
                       <MessageSquare size={12} /> Analizar con Agente
                     </button>

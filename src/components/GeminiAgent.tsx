@@ -167,11 +167,11 @@ Por favor, haz un resumen ejecutivo de esta noticia y bríndame tu análisis té
   ];
 
   return (
-    <div className="main-content main-content--viewport flex flex-col animate-fade-in">
+    <div className="main-content flex flex-col animate-fade-in h-full">
       {/* Header */}
-      <header className="flex justify-between items-center pb-4 border-b border-border-color">
+      <header className="flex justify-between items-center pb-4 border-b border-border-color shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-lime/10 rounded-xl text-lime">
+          <div className="p-2 bg-accent-gold/10 rounded-xl text-accent-gold">
             <Cpu size={24} />
           </div>
           <div>
@@ -191,14 +191,14 @@ Por favor, haz un resumen ejecutivo de esta noticia y bríndame tu análisis té
 
       {/* Grid de Plantillas Rápidas (Solo visibles si no hay chat largo) */}
       {messages.length <= 1 && (
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0 mt-4">
           {promptTemplates.map((tpl, i) => (
             <button
               key={i}
               onClick={() => handleSendMessage(tpl.prompt)}
-              className="glass-panel p-4 text-left hover:border-lime/30 hover:bg-white/[0.02] transition-all duration-200 flex flex-col gap-1.5"
+              className="glass-panel p-4 text-left hover:border-accent-gold/40 hover:bg-white/[0.02] transition-all duration-200 flex flex-col gap-1.5"
             >
-              <div className="flex items-center gap-2 text-lime text-xs font-semibold uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-accent-gold text-xs font-semibold uppercase tracking-wider">
                 <Sparkles size={12} />
                 {tpl.label}
               </div>
@@ -211,7 +211,7 @@ Por favor, haz un resumen ejecutivo de esta noticia y bríndame tu análisis té
       )}
 
       {/* Área de Mensajes */}
-      <div className="chat-messages-container">
+      <div className="flex-1 overflow-y-auto flex flex-col gap-5 py-4 min-h-0 pr-2">
         {messages.map((msg, idx) => (
           <div 
             key={idx}
@@ -219,19 +219,19 @@ Por favor, haz un resumen ejecutivo de esta noticia y bríndame tu análisis té
           >
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
               msg.role === 'user'
-                ? 'bg-lime text-black font-semibold'
-                : 'bg-blue-600/20 text-accent-steel border border-accent-steel/20'
+                ? 'bg-accent-gold text-white font-semibold shadow-sm'
+                : 'bg-accent-steel/20 text-accent-steel border border-accent-steel/30'
             }`}>
               {msg.role === 'user' ? 'CF' : 'G'}
             </div>
 
-            <div className={`p-4 rounded-xl text-sm leading-relaxed border break-words ${
+            <div className={`p-4 rounded-xl text-sm leading-relaxed border break-words shadow-sm ${
               msg.role === 'user'
-                ? 'bg-lime/10 border-lime/30 text-white'
-                : 'bg-white/[0.03] border-white/10 text-text-primary'
+                ? 'bg-accent-gold/10 border-accent-gold/30 text-white'
+                : 'bg-bg-secondary border-border-color text-text-primary'
             }`}>
               <div 
-                className="prose-chat"
+                className="prose-chat prose-invert"
                 dangerouslySetInnerHTML={{ __html: renderMessageContent(msg.content) }} 
               />
             </div>
@@ -239,11 +239,11 @@ Por favor, haz un resumen ejecutivo de esta noticia y bríndame tu análisis té
         ))}
         {loading && (
           <div className="flex gap-3 max-w-[80%] self-start">
-            <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-accent-steel border border-accent-steel/20 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-accent-steel/20 text-accent-steel border border-accent-steel/30 flex items-center justify-center">
               <Loader2 className="animate-spin" size={14} />
             </div>
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-text-secondary flex items-center gap-2 typing-cursor">
-              <span>Gemini procesando y analizando datos de minería</span>
+            <div className="p-4 rounded-xl bg-bg-secondary border border-border-color text-xs text-text-secondary flex items-center gap-2 typing-cursor shadow-sm">
+              <span>Gemini procesando y analizando datos de minería...</span>
             </div>
           </div>
         )}
@@ -251,13 +251,13 @@ Por favor, haz un resumen ejecutivo de esta noticia y bríndame tu análisis té
       </div>
 
       {/* Input de Mensaje */}
-      <footer className="chat-footer-bar">
+      <footer className="flex gap-3 items-center pt-4 border-t border-border-color shrink-0 mt-auto">
         <input 
           type="text" 
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Pregunta sobre proyectos mineros, leyes geológicas o redacta partes de una columna..."
-          className="glass-input flex-1"
+          className="glass-input flex-1 py-3 px-4"
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleSendMessage('');
           }}
@@ -265,7 +265,7 @@ Por favor, haz un resumen ejecutivo de esta noticia y bríndame tu análisis té
         />
         <button 
           onClick={() => handleSendMessage('')}
-          className="glass-button active px-5 py-3"
+          className="glass-button active px-6 py-3 shadow-sm"
           disabled={loading || !input.trim()}
         >
           <Send size={16} /> Enviar

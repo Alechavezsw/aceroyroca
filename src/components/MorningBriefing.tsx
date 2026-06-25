@@ -78,7 +78,7 @@ Sé directo, periodístico y accionable. Máximo 350 palabras.`;
             </div>
             {loading ? (
               <div className="flex flex-col items-center py-12 gap-3 text-text-secondary">
-                <Loader2 className="animate-spin text-lime" size={32} />
+                <Loader2 className="animate-spin text-accent-gold" size={32} />
                 <p className="text-sm">Gemini preparando tu agenda editorial...</p>
               </div>
             ) : (

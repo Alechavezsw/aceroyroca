@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 // Prompt del sistema para el experto en minería
 const SYSTEM_INSTRUCTION = `Actúas como el Agente Minero Experto de Acero & Roca, un asesor técnico, económico y geopolítico de minería de primer nivel.
@@ -36,54 +36,34 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { messages, temperature = 0.7, model: requestedModel = 'gemini-1.5-flash' } = req.body;
+    const { messages, temperature = 0.7, model: requestedModel = 'gemini-3.5-flash' } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ error: 'El cuerpo de la petición debe contener un arreglo de "messages".' });
       return;
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // Mapear historial al formato de Gemini
-    // El formato de chat de Gemini requiere alternar 'user' y 'model' roles en un arreglo de contents.
-    // Filtrar el primer mensaje si es un prompt de sistema o integrarlo como systemInstruction
-    const model = genAI.getGenerativeModel({ 
+    const ai = new GoogleGenAI({ apiKey });
+
+    // Construir el historial de mensajes para el nuevo SDK
+    // El nuevo SDK usa el formato { role: 'user' | 'model', parts: [{ text: string }] }
+    const contents = messages.map((msg: any) => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }]
+    }));
+
+    // Usar generateContent con el historial completo
+    const response = await ai.models.generateContent({
       model: requestedModel,
-      systemInstruction: SYSTEM_INSTRUCTION
-    });
-
-    // Formatear mensajes para la API de Gemini
-    // En Gemini: { role: 'user' | 'model', parts: [{ text: string }] }
-    // Nota: El último mensaje debe ser del usuario para generar una respuesta.
-    const geminiHistory = messages.slice(0, -1).map((msg: any) => {
-      let role = 'user';
-      if (msg.role === 'assistant' || msg.role === 'model') {
-        role = 'model';
-      }
-      return {
-        role: role,
-        parts: [{ text: msg.content }]
-      };
-    });
-
-    const lastMessage = messages[messages.length - 1];
-    if (!lastMessage || lastMessage.role !== 'user') {
-      res.status(400).json({ error: 'El último mensaje debe ser del rol "user".' });
-      return;
-    }
-
-    const chat = model.startChat({
-      history: geminiHistory,
-      generationConfig: {
-        temperature: temperature,
-        maxOutputTokens: 2048,
+      contents,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        temperature,
+        maxOutputTokens: 4096,
       }
     });
 
-    const result = await chat.sendMessage(lastMessage.content);
-    const response = await result.response;
-    const responseText = response.text();
+    const responseText = response.text || '';
 
     res.status(200).json({
       role: 'assistant',

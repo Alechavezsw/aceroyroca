@@ -16,7 +16,7 @@ import {
 const COLUMNS: { id: Task['status']; label: string; color: string }[] = [
   { id: 'ideas', label: 'Ideas de Artículos', color: 'border-t-sky-500' },
   { id: 'research', label: 'Investigación', color: 'border-t-indigo-500' },
-  { id: 'drafting', label: 'En Redacción', color: 'border-t-lime' },
+  { id: 'drafting', label: 'En Redacción', color: 'border-t-accent-gold' },
   { id: 'review', label: 'Revisión / Edición', color: 'border-t-purple-500' },
   { id: 'published', label: 'Publicado', color: 'border-t-emerald-500' }
 ];
@@ -127,7 +127,7 @@ export const KanbanBoard: React.FC = () => {
                 </div>
                 <button 
                   onClick={() => handleOpenModal(col.id)}
-                  className="text-text-muted hover:text-lime p-0.5 rounded hover:bg-white/5 transition-colors"
+                  className="text-text-muted hover:text-accent-gold p-0.5 rounded hover:bg-white/5 transition-colors"
                 >
                   <Plus size={14} />
                 </button>
@@ -147,7 +147,7 @@ export const KanbanBoard: React.FC = () => {
                         task.priority === 'high' 
                           ? 'bg-red-500/15 text-red-400 border border-red-500/20' 
                           : task.priority === 'medium'
-                          ? 'bg-lime/15 text-lime border border-lime/20'
+                          ? 'bg-accent-gold/15 text-accent-gold border border-accent-gold/20'
                           : 'bg-blue-500/15 text-blue-400 border border-blue-500/20'
                       }`}>
                         {task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja'}
@@ -176,7 +176,7 @@ export const KanbanBoard: React.FC = () => {
                         {task.note_id && (
                           <button
                             onClick={() => handleNoteLinkClick(task.note_id!)}
-                            className="flex items-center gap-0.5 text-lime hover:underline"
+                            className="flex items-center gap-0.5 text-accent-gold hover:underline"
                             title="Ver Borrador"
                           >
                             <Link2 size={10} /> Borrador

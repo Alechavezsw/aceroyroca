@@ -215,7 +215,7 @@ export const CalendarView: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <span className={`text-xs font-bold ${
                     cell.isToday 
-                      ? 'text-lime' 
+                      ? 'text-accent-gold' 
                       : cell.isCurrentMonth 
                       ? 'text-white' 
                       : 'text-text-muted'
@@ -224,7 +224,7 @@ export const CalendarView: React.FC = () => {
                   </span>
                   
                   {/* Botón rápido de agregar solo visible al hover */}
-                  <span className="opacity-0 group-hover:opacity-100 text-[10px] text-lime transition-opacity">
+                  <span className="opacity-0 group-hover:opacity-100 text-[10px] text-accent-gold transition-opacity">
                     <Plus size={10} />
                   </span>
                 </div>
