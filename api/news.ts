@@ -86,8 +86,6 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    }
-
     let sortedNews = newsItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
     sortedNews = sortedNews.slice(0, 30);
 
