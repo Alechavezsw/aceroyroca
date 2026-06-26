@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const res = await fetch('/api/auth/verify', {
+      const res = await fetch('/api/auth-verify', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -54,20 +54,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [verifySession]);
 
   const login = async (user: string, password: string): Promise<string | null> => {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: user, password })
-    });
+    try {
+      const res = await fetch('/api/auth-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password })
+      });
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      return data.error || 'Error al iniciar sesión';
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return (data as { error?: string }).error || 'Error al iniciar sesión';
+      }
+
+      localStorage.setItem(SESSION_KEY, data.token);
+      setUsername(data.username);
+      return null;
+    } catch {
+      return 'No se pudo conectar con el servidor. Verificá que la app esté desplegada con AUTH_USERNAME y AUTH_PASSWORD.';
     }
-
-    localStorage.setItem(SESSION_KEY, data.token);
-    setUsername(data.username);
-    return null;
   };
 
   const logout = () => {

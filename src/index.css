@@ -101,6 +101,13 @@ body::before {
   overflow: hidden;
 }
 
+#root:has(> .login-screen),
+#root:has(> .app-loader) {
+  min-height: 100dvh;
+  height: 100dvh;
+  height: 100%;
+}
+
 /* ═══════════════════════════════════════ */
 /*   COMPONENTES BASE                      */
 /* ═══════════════════════════════════════ */
@@ -1318,12 +1325,14 @@ body::before {
 /* ═══════════════════════════════════════ */
 
 .app-loader {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 100vh;
+  min-height: 100dvh;
+  min-height: 100%;
   gap: 20px;
   background: var(--bg-primary);
   position: relative;
@@ -1380,14 +1389,18 @@ body::before {
 /* ═══════════════════════════════════════ */
 
 .login-screen {
-  min-height: 100vh;
+  flex: 1;
+  width: 100%;
+  min-height: 100dvh;
+  min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
   background: var(--bg-primary);
   position: relative;
-  overflow: hidden;
+  overflow: auto;
+  box-sizing: border-box;
 }
 
 .login-screen__glow {
@@ -1403,6 +1416,8 @@ body::before {
   position: relative;
   width: 100%;
   max-width: 400px;
+  margin: auto;
+  flex-shrink: 0;
   padding: 36px 32px 32px;
   border-radius: var(--radius-2xl);
   border: 1px solid var(--border-color);
