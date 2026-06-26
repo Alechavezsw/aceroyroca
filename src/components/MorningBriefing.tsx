@@ -1,104 +1,143 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, X, Loader2 } from 'lucide-react';
+import { Sparkles, X, Loader2, History, ChevronRight } from 'lucide-react';
 
-export const MorningBriefing: React.FC = () => {
-  const { notes, tasks, events, config, setActiveSection } = useApp();
-  const [open, setOpen] = useState(false);
+/** Modal global de briefing — montar una sola vez en App.tsx */
+export const BriefingModal: React.FC = () => {
+  const {
+    briefingHistory,
+    runBriefing,
+    autoBriefingOpen,
+    setAutoBriefingOpen,
+    setActiveSection
+  } = useApp();
+
   const [loading, setLoading] = useState(false);
-  const [briefing, setBriefing] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const runBriefing = async () => {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayEntry = briefingHistory.find(h => h.dateKey === todayKey);
+  const displayEntry = selectedId
+    ? briefingHistory.find(h => h.id === selectedId)
+    : todayEntry || briefingHistory[0];
+
+  const handleRun = async () => {
     setLoading(true);
-    setBriefing('');
-    setOpen(true);
-
-    const pendingTasks = tasks.filter(t => t.status !== 'published').slice(0, 5);
-    const nextDelivery = events
-      .filter(e => e.type === 'delivery' && new Date(e.start_date) > new Date())
-      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())[0];
-
-    const context = `Eres el asistente editorial de Carlos Fernández (Acero & Roca).
-
-DATOS DEL DÍA:
-- Borradores activos: ${notes.length}
-- Tareas pendientes: ${pendingTasks.map(t => t.title).join('; ') || 'ninguna'}
-- Próxima entrega: ${nextDelivery ? `${nextDelivery.title} (${nextDelivery.start_date})` : 'sin entregas programadas'}
-- Palabras totales redactadas: ${notes.reduce((s, n) => s + n.words_count, 0)}
-
-Genera un BRIEFING MATUTINO en español con:
-1. Resumen ejecutivo (2 líneas)
-2. Tres ideas concretas de columna para hoy (título + ángulo en una línea cada una)
-3. Una alerta o tendencia del sector minero argentino a monitorear
-4. Prioridad editorial sugerida para la jornada
-
-Sé directo, periodístico y accionable. Máximo 350 palabras.`;
-
-    try {
-      const res = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: context }],
-          model: config.geminiModel
-        })
-      });
-      const data = await res.json();
-      setBriefing(data.content || 'No se pudo generar el briefing.');
-    } catch {
-      setBriefing('Error de conexión. Verifica que el servidor y GEMINI_API_KEY estén activos.');
-    } finally {
-      setLoading(false);
-    }
+    setSelectedId(null);
+    await runBriefing({ silent: true });
+    setLoading(false);
   };
 
   React.useEffect(() => {
-    const handler = () => runBriefing();
+    const handler = () => {
+      setAutoBriefingOpen(true);
+      handleRun();
+    };
     window.addEventListener('ar:briefing', handler);
     return () => window.removeEventListener('ar:briefing', handler);
-  }, [notes, tasks, events, config.geminiModel]);
+  }, []);
+
+  if (!autoBriefingOpen) return null;
 
   return (
-    <>
-      <button type="button" onClick={runBriefing} className="glass-button steel text-sm">
-        <Sparkles size={16} /> Briefing del día
-      </button>
+    <div className="modal-overlay" onClick={() => setAutoBriefingOpen(false)}>
+      <div className="modal-panel briefing-modal-panel" onClick={e => e.stopPropagation()}>
+        <div className="panel-header">
+          <h3 className="panel-header__title">
+            <Sparkles size={20} />
+            Briefing Matutino
+          </h3>
+          <button type="button" onClick={() => setAutoBriefingOpen(false)} className="text-text-muted hover:text-white">
+            <X size={20} />
+          </button>
+        </div>
 
-      {open && (
-        <div className="modal-overlay" onClick={() => setOpen(false)}>
-          <div className="modal-panel briefing-modal" onClick={e => e.stopPropagation()}>
-            <div className="panel-header">
-              <h3 className="panel-header__title">
-                <Sparkles size={20} />
-                Briefing Matutino — Acero & Roca
-              </h3>
-              <button type="button" onClick={() => setOpen(false)} className="text-text-muted hover:text-white">
-                <X size={20} />
+        <div className="briefing-modal-layout">
+          <aside className="briefing-history">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+                <History size={13} /> Historial
+              </span>
+              <button type="button" onClick={handleRun} disabled={loading} className="text-[10px] text-accent-gold hover:text-white font-semibold">
+                {loading ? 'Generando…' : '+ Nuevo'}
               </button>
             </div>
+            <div className="briefing-history__list">
+              {briefingHistory.length === 0 ? (
+                <p className="text-xs text-text-muted py-4 text-center">Sin briefings guardados</p>
+              ) : (
+                briefingHistory.map(h => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => setSelectedId(h.id)}
+                    className={`briefing-history__item ${(selectedId === h.id || (!selectedId && h.id === displayEntry?.id)) ? 'is-active' : ''}`}
+                  >
+                    <span className="briefing-history__date">
+                      {new Date(h.createdAt).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </span>
+                    <span className="briefing-history__preview">{h.content.slice(0, 60)}…</span>
+                    <ChevronRight size={12} className="text-text-muted shrink-0" />
+                  </button>
+                ))
+              )}
+            </div>
+          </aside>
+
+          <div className="briefing-modal-content">
             {loading ? (
               <div className="flex flex-col items-center py-12 gap-3 text-text-secondary">
                 <Loader2 className="animate-spin text-accent-gold" size={32} />
-                <p className="text-sm">Gemini preparando tu agenda editorial...</p>
+                <p className="text-sm">Gemini preparando tu agenda editorial…</p>
+              </div>
+            ) : displayEntry ? (
+              <div className="briefing-content whitespace-pre-line text-sm leading-relaxed text-text-primary">
+                {displayEntry.content}
               </div>
             ) : (
-              <div className="briefing-content whitespace-pre-line text-sm leading-relaxed text-text-primary">
-                {briefing}
+              <div className="text-center py-12 text-text-muted text-sm">
+                <p className="mb-4">Todavía no hay briefing para hoy.</p>
+                <button type="button" onClick={handleRun} className="glass-button active text-sm">
+                  <Sparkles size={14} /> Generar ahora
+                </button>
               </div>
             )}
-            {!loading && (
+
+            {!loading && displayEntry && (
               <div className="flex gap-2 mt-4 pt-4 border-t border-white/10">
-                <button type="button" className="glass-button active text-sm" onClick={() => { setActiveSection('editor'); setOpen(false); }}>
+                <button type="button" className="glass-button active text-sm" onClick={() => { setActiveSection('editor'); setAutoBriefingOpen(false); }}>
                   Ir a redactar
                 </button>
-                <button type="button" className="glass-button text-sm" onClick={() => { setActiveSection('agent'); setOpen(false); }}>
+                <button type="button" className="glass-button text-sm" onClick={() => { setActiveSection('agent'); setAutoBriefingOpen(false); }}>
                   Analizar con Agente
                 </button>
               </div>
             )}
           </div>
         </div>
-      )}
-    </>
+      </div>
+    </div>
+  );
+};
+
+/** Botón para abrir el briefing desde cualquier vista */
+export const BriefingButton: React.FC = () => {
+  const { setAutoBriefingOpen, briefingHistory, runBriefing } = useApp();
+  const [busy, setBusy] = useState(false);
+
+  const open = async () => {
+    setAutoBriefingOpen(true);
+    const today = new Date().toISOString().slice(0, 10);
+    if (!briefingHistory.some(h => h.dateKey === today)) {
+      setBusy(true);
+      await runBriefing({ silent: true });
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button type="button" onClick={open} disabled={busy} className="glass-button steel text-sm">
+      <Sparkles size={16} /> {busy ? 'Generando…' : 'Briefing del día'}
+    </button>
   );
 };

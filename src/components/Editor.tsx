@@ -25,6 +25,9 @@ import { COLUMN_TEMPLATES } from '../data/columnTemplates';
 import { getNoteVersions, saveNoteVersion } from '../hooks/useNoteVersions';
 import { downloadWordDoc, copyCmsHtml, copyToClipboard } from '../utils/exportUtils';
 import { SyncIndicator } from './SyncIndicator';
+import { EditorChecklist } from './EditorChecklist';
+import { buildColumnChecklist, glossaryTermsInContent } from '../utils/columnChecklist';
+import type { GlossaryTerm } from '../context/AppContext';
 
 export const Editor: React.FC = () => {
   const { 
@@ -34,7 +37,8 @@ export const Editor: React.FC = () => {
     createNote, 
     updateNote, 
     deleteNote, 
-    config 
+    config,
+    glossary
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
@@ -46,12 +50,19 @@ export const Editor: React.FC = () => {
   const [showVersions, setShowVersions] = useState(false);
   const [versions, setVersions] = useState<ReturnType<typeof getNoteVersions>>([]);
   const [copyMsg, setCopyMsg] = useState('');
+  const [glossaryPreview, setGlossaryPreview] = useState<GlossaryTerm | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
   const wordPct = activeNote
     ? Math.min(100, Math.round((activeNote.words_count / config.wordGoalMax) * 100))
     : 0;
+
+  const checklistItems = activeNote
+    ? buildColumnChecklist(activeNote.content, activeNote.words_count, config.wordGoalMin, config.wordGoalMax, glossary)
+    : [];
+
+  const detectedTerms = activeNote ? glossaryTermsInContent(activeNote.content, glossary) : [];
 
   useEffect(() => {
     if (activeNoteId) setVersions(getNoteVersions(activeNoteId));
@@ -271,6 +282,7 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
 
           {/* Core Editor */}
           {activeNote ? (
+            <div className="editor-main-with-checklist">
             <div className="editor-core">
               {/* Header stats and controls */}
               <div className="flex justify-between items-center pb-2 border-b border-border-color no-print">
@@ -445,6 +457,13 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
                 </div>
               )}
             </div>
+
+            <EditorChecklist
+              items={checklistItems}
+              detectedTerms={detectedTerms}
+              onTermClick={setGlossaryPreview}
+            />
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-text-muted">
               Crea o selecciona una nota para comenzar a redactar.
@@ -554,6 +573,20 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
           </div>
         )}
       </div>
+
+      {glossaryPreview && (
+        <div className="glossary-popover-overlay no-print" onClick={() => setGlossaryPreview(null)}>
+          <div className="glossary-popover" onClick={e => e.stopPropagation()}>
+            <span className="glossary-popover__category">{glossaryPreview.category}</span>
+            <h4 className="glossary-popover__term">{glossaryPreview.term}</h4>
+            <p className="glossary-popover__def">{glossaryPreview.definition}</p>
+            {glossaryPreview.example && (
+              <p className="glossary-popover__example"><strong>Ej:</strong> {glossaryPreview.example}</p>
+            )}
+            <button type="button" className="glass-button text-xs mt-3" onClick={() => setGlossaryPreview(null)}>Cerrar</button>
+          </div>
+        </div>
+      )}
 
       {/* RENDERIZADO IMPRESO (ESTO SE CONVIERTE A PDF POR WINDOW.PRINT()) */}
       {activeNote && (

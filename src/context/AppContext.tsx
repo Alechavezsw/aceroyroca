@@ -1,5 +1,33 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
+import { BUILT_IN_COURSE, BUILT_IN_COURSE_ID, type Course } from '../data/courses';
+import { buildDraftFromNews, buildDraftFromAnalysis, type DraftSource } from '../utils/draftBuilder';
+import {
+  fetchGlossaryFromDb,
+  upsertGlossaryTerm as syncGlossaryTerm,
+  deleteGlossaryTermFromDb,
+  mergeGlossary,
+  fetchCustomCourses,
+  saveCustomCourses,
+  fetchCourseProgress,
+  saveCourseProgress,
+  fetchWatchlist,
+  saveWatchlist as syncWatchlist,
+  fetchBriefingHistory,
+  saveBriefingHistoryRemote
+} from '../utils/editorialSync';
+import {
+  buildBriefingPrompt,
+  fetchBriefingFromApi,
+  createBriefingEntry,
+  loadBriefingHistory,
+  saveBriefingHistory,
+  getLastAutoBriefingDate,
+  markAutoBriefingDone,
+  getTodayKey,
+  hasBriefingToday
+} from '../utils/briefingService';
+import { loadWatchlist, saveWatchlist, getWatchlistProjectNames } from '../utils/projectWatchlist';
 
 // Interfaces
 export interface Note {
@@ -39,13 +67,15 @@ export interface GlossaryTerm {
   id: string;
   term: string;
   definition: string;
+  category?: string;
+  example?: string;
   source?: string;
   addedAt: string;
 }
 
 export interface CourseProgress {
-  completedModules: string[];
-  currentStageId: string;
+  activeCourseId: string;
+  progressByCourse: Record<string, string[]>;
 }
 
 export type SyncStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -58,6 +88,14 @@ export interface AppConfig {
   rssFeeds: string[];
   wordGoalMin: number;
   wordGoalMax: number;
+  autoBriefing: boolean;
+}
+
+export interface BriefingEntry {
+  id: string;
+  content: string;
+  createdAt: string;
+  dateKey: string;
 }
 
 interface AppContextType {
@@ -73,6 +111,7 @@ interface AppContextType {
   
   // Notas API
   createNote: (title: string, content?: string) => Promise<Note>;
+  createDraftFromSource: (source: DraftSource) => Promise<Note>;
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
   
@@ -87,11 +126,28 @@ interface AppContextType {
   deleteEvent: (id: string) => Promise<void>;
 
   glossary: GlossaryTerm[];
-  addGlossaryTerm: (term: string, definition: string, source?: string) => void;
+  addGlossaryTerm: (term: string, definition: string, opts?: { source?: string; category?: string; example?: string }) => boolean;
+  updateGlossaryTerm: (id: string, updates: Partial<Omit<GlossaryTerm, 'id' | 'addedAt'>>) => void;
   removeGlossaryTerm: (id: string) => void;
 
+  courses: Course[];
   courseProgress: CourseProgress;
+  activeCourse: Course;
+  createCourse: (title: string, description: string) => Course;
+  deleteCourse: (courseId: string) => void;
+  setActiveCourse: (courseId: string) => void;
+  addCourseStage: (courseId: string, title: string, subtitle: string) => void;
+  addCourseModule: (courseId: string, stageId: string, title: string, content: string) => void;
   markModuleComplete: (moduleId: string) => void;
+
+  watchlist: string[];
+  toggleWatchlist: (projectId: string) => void;
+  isWatchlisted: (projectId: string) => boolean;
+
+  briefingHistory: BriefingEntry[];
+  runBriefing: (opts?: { silent?: boolean }) => Promise<BriefingEntry | null>;
+  autoBriefingOpen: boolean;
+  setAutoBriefingOpen: (open: boolean) => void;
 
   syncStatus: SyncStatus;
 
@@ -197,14 +253,15 @@ const DEFAULT_CONFIG: AppConfig = {
     'https://www.mining.com/feed/'
   ],
   wordGoalMin: 900,
-  wordGoalMax: 1200
+  wordGoalMax: 1200,
+  autoBriefing: true
 };
 
 const DEFAULT_GLOSSARY: GlossaryTerm[] = [
-  { id: 'g1', term: 'Ley de corte', definition: 'Grado mínimo de metal en el mineral para que su procesamiento sea económicamente viable.', source: 'Curso Etapa 2', addedAt: new Date().toISOString() },
-  { id: 'g2', term: 'Pórfido de cobre', definition: 'Yacimiento de baja ley pero enorme volumen, típico de Los Azules y Josemaría.', source: 'Curso Etapa 2', addedAt: new Date().toISOString() },
-  { id: 'g3', term: 'RIGI', definition: 'Régimen de Incentivo para Grandes Inversiones; estabilidad fiscal para proyectos +USD 200M.', source: 'Curso Etapa 6', addedAt: new Date().toISOString() },
-  { id: 'g4', term: 'Lixiviación', definition: 'Proceso químico que disuelve el metal del mineral usando soluciones en pilas o montones.', source: 'Curso Etapa 4', addedAt: new Date().toISOString() }
+  { id: 'g1', term: 'Ley de corte', definition: 'Grado mínimo de metal en el mineral para que su procesamiento sea económicamente viable.', category: 'Geología', source: 'Curso Etapa 2', addedAt: new Date().toISOString() },
+  { id: 'g2', term: 'Pórfido de cobre', definition: 'Yacimiento de baja ley pero enorme volumen, típico de Los Azules y Josemaría.', category: 'Geología', example: 'Los Azules tiene reservas estimadas en cientos de millones de toneladas con leyes de ~0,4% Cu.', source: 'Curso Etapa 2', addedAt: new Date().toISOString() },
+  { id: 'g3', term: 'RIGI', definition: 'Régimen de Incentivo para Grandes Inversiones; estabilidad fiscal para proyectos superiores a USD 200 millones.', category: 'Legal', source: 'Curso Etapa 6', addedAt: new Date().toISOString() },
+  { id: 'g4', term: 'Lixiviación', definition: 'Proceso químico que disuelve el metal del mineral usando soluciones en pilas o montones.', category: 'Procesos', example: 'Los Azules evalúa lixiviación en pilas para reducir costos operativos.', source: 'Curso Etapa 4', addedAt: new Date().toISOString() }
 ];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -217,9 +274,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [loading, setLoading] = useState(true);
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [glossary, setGlossary] = useState<GlossaryTerm[]>([]);
-  const [courseProgress, setCourseProgress] = useState<CourseProgress>({ completedModules: [], currentStageId: 'stage-1' });
+  const [courses, setCourses] = useState<Course[]>([BUILT_IN_COURSE]);
+  const [courseProgress, setCourseProgress] = useState<CourseProgress>({
+    activeCourseId: BUILT_IN_COURSE_ID,
+    progressByCourse: { [BUILT_IN_COURSE_ID]: [] }
+  });
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [watchlist, setWatchlist] = useState<string[]>(loadWatchlist());
+  const [briefingHistory, setBriefingHistory] = useState<BriefingEntry[]>(loadBriefingHistory());
+  const [autoBriefingOpen, setAutoBriefingOpen] = useState(false);
   const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoBriefingRan = React.useRef(false);
 
   // Cargar datos (Supabase o LocalStorage)
   useEffect(() => {
@@ -231,26 +296,85 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       const savedGlossary = localStorage.getItem('ar_glossary');
-      setGlossary(savedGlossary ? JSON.parse(savedGlossary) : DEFAULT_GLOSSARY);
+      const localGlossary: GlossaryTerm[] = savedGlossary ? JSON.parse(savedGlossary) : DEFAULT_GLOSSARY;
       if (!savedGlossary) localStorage.setItem('ar_glossary', JSON.stringify(DEFAULT_GLOSSARY));
 
+      let mergedGlossary = localGlossary;
+      let mergedCourses: Course[] = [BUILT_IN_COURSE];
+      let mergedProgress: CourseProgress = {
+        activeCourseId: BUILT_IN_COURSE_ID,
+        progressByCourse: { [BUILT_IN_COURSE_ID]: [] }
+      };
+      let mergedWatchlist = loadWatchlist();
+      let mergedBriefingHistory = loadBriefingHistory();
+
       const savedCourse = localStorage.getItem('ar_course_progress');
-      if (savedCourse) setCourseProgress(JSON.parse(savedCourse));
+      if (savedCourse) {
+        const parsed = JSON.parse(savedCourse);
+        if (parsed.progressByCourse) mergedProgress = parsed;
+        else if (parsed.completedModules) {
+          mergedProgress = {
+            activeCourseId: BUILT_IN_COURSE_ID,
+            progressByCourse: { [BUILT_IN_COURSE_ID]: parsed.completedModules }
+          };
+        }
+      }
+
+      const savedCourses = localStorage.getItem('ar_custom_courses');
+      if (savedCourses) {
+        mergedCourses = [BUILT_IN_COURSE, ...JSON.parse(savedCourses)];
+      }
 
       document.documentElement.setAttribute('data-theme', (savedConfig ? JSON.parse(savedConfig).theme : 'dark') || 'dark');
 
       // 2. Cargar Datos
       if (isSupabaseConfigured && supabase) {
         try {
-          const [notesRes, tasksRes, eventsRes] = await Promise.all([
+          const [notesRes, tasksRes, eventsRes, remoteGlossary, remoteCourses, remoteProgress, remoteWatchlist, remoteBriefings] = await Promise.all([
             supabase.from('notes').select('*').order('updated_at', { ascending: false }),
             supabase.from('tasks').select('*').order('created_at', { ascending: true }),
-            supabase.from('events').select('*').order('start_date', { ascending: true })
+            supabase.from('events').select('*').order('start_date', { ascending: true }),
+            fetchGlossaryFromDb(),
+            fetchCustomCourses(),
+            fetchCourseProgress(),
+            fetchWatchlist(),
+            fetchBriefingHistory()
           ]);
 
           if (notesRes.error) throw notesRes.error;
           if (tasksRes.error) throw tasksRes.error;
           if (eventsRes.error) throw eventsRes.error;
+
+          if (remoteGlossary.length) {
+            mergedGlossary = mergeGlossary(localGlossary, remoteGlossary);
+            localStorage.setItem('ar_glossary', JSON.stringify(mergedGlossary));
+          }
+
+          if (remoteCourses.length) {
+            mergedCourses = [BUILT_IN_COURSE, ...remoteCourses];
+            localStorage.setItem('ar_custom_courses', JSON.stringify(remoteCourses));
+          }
+
+          if (remoteProgress) {
+            mergedProgress = remoteProgress;
+            localStorage.setItem('ar_course_progress', JSON.stringify(remoteProgress));
+          }
+
+          if (remoteWatchlist?.length) {
+            mergedWatchlist = remoteWatchlist;
+            saveWatchlist(mergedWatchlist);
+          }
+
+          if (remoteBriefings?.length) {
+            mergedBriefingHistory = remoteBriefings;
+            saveBriefingHistory(mergedBriefingHistory);
+          }
+
+          setGlossary(mergedGlossary);
+          setCourses(mergedCourses);
+          setCourseProgress(mergedProgress);
+          setWatchlist(mergedWatchlist);
+          setBriefingHistory(mergedBriefingHistory);
 
           setNotes(notesRes.data || []);
           setTasks(tasksRes.data || []);
@@ -262,10 +386,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         } catch (e) {
           console.error('Error conectando a Supabase, usando LocalStorage de respaldo:', e);
+          setGlossary(mergedGlossary);
+          setCourses(mergedCourses);
+          setCourseProgress(mergedProgress);
+          setWatchlist(mergedWatchlist);
+          setBriefingHistory(mergedBriefingHistory);
           setIsDbConnected(false);
           loadFromLocalStorage();
         }
       } else {
+        setGlossary(mergedGlossary);
+        setCourses(mergedCourses);
+        setCourseProgress(mergedProgress);
+        setWatchlist(mergedWatchlist);
+        setBriefingHistory(mergedBriefingHistory);
         loadFromLocalStorage();
       }
       setLoading(false);
@@ -273,6 +407,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     initializeData();
   }, []);
+
+  const persistWatchlist = (ids: string[]) => {
+    saveWatchlist(ids);
+    if (isDbConnected) syncWatchlist(ids).catch(console.warn);
+  };
+
+  const persistBriefingHistory = (history: BriefingEntry[]) => {
+    saveBriefingHistory(history);
+    if (isDbConnected) saveBriefingHistoryRemote(history).catch(console.warn);
+  };
+
+  const toggleWatchlist = (projectId: string) => {
+    setWatchlist(prev => {
+      const updated = prev.includes(projectId)
+        ? prev.filter(id => id !== projectId)
+        : [...prev, projectId];
+      persistWatchlist(updated);
+      return updated;
+    });
+  };
+
+  const isWatchlisted = (projectId: string) => watchlist.includes(projectId);
+
+  const runBriefing = async (opts?: { silent?: boolean }): Promise<BriefingEntry | null> => {
+    const prompt = buildBriefingPrompt(notes, tasks, events, getWatchlistProjectNames(watchlist));
+    try {
+      const content = await fetchBriefingFromApi(prompt, config.geminiModel);
+      const entry = createBriefingEntry(content);
+      setBriefingHistory(prev => {
+        const withoutToday = prev.filter(h => h.dateKey !== entry.dateKey);
+        const updated = [entry, ...withoutToday];
+        persistBriefingHistory(updated);
+        return updated;
+      });
+      markAutoBriefingDone();
+      if (!opts?.silent) setAutoBriefingOpen(true);
+      return entry;
+    } catch {
+      return null;
+    }
+  };
+
+  // Briefing automático al iniciar (una vez por día)
+  useEffect(() => {
+    if (loading || autoBriefingRan.current) return;
+    const cfg = config;
+    if (!cfg.autoBriefing) return;
+
+    const today = getTodayKey();
+    if (getLastAutoBriefingDate() === today || hasBriefingToday(briefingHistory)) return;
+
+    autoBriefingRan.current = true;
+    runBriefing({ silent: true }).then(entry => {
+      if (entry) setAutoBriefingOpen(true);
+    });
+  }, [loading, config.autoBriefing]);
 
   const loadFromLocalStorage = () => {
     const savedNotes = localStorage.getItem('ar_columnist_notes');
@@ -309,17 +499,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const addGlossaryTerm = (term: string, definition: string, source?: string) => {
+  const persistCourses = (allCourses: Course[]) => {
+    const custom = allCourses.filter(c => !c.isBuiltIn);
+    localStorage.setItem('ar_custom_courses', JSON.stringify(custom));
+    if (isDbConnected) saveCustomCourses(allCourses).catch(console.warn);
+  };
+
+  const persistCourseProgress = (progress: CourseProgress) => {
+    localStorage.setItem('ar_course_progress', JSON.stringify(progress));
+    if (isDbConnected) saveCourseProgress(progress).catch(console.warn);
+  };
+
+  const activeCourse = courses.find(c => c.id === courseProgress.activeCourseId) || BUILT_IN_COURSE;
+
+  const addGlossaryTerm = (
+    term: string,
+    definition: string,
+    opts?: { source?: string; category?: string; example?: string }
+  ): boolean => {
+    const normalized = term.trim().toLowerCase();
+    if (glossary.some(g => g.term.toLowerCase() === normalized)) return false;
+
     const entry: GlossaryTerm = {
       id: 'g_' + Math.random().toString(36).slice(2, 9),
-      term,
-      definition,
-      source,
+      term: term.trim(),
+      definition: definition.trim(),
+      category: opts?.category || 'General',
+      example: opts?.example?.trim() || undefined,
+      source: opts?.source || 'Manual',
       addedAt: new Date().toISOString()
     };
     setGlossary(prev => {
       const updated = [entry, ...prev];
       localStorage.setItem('ar_glossary', JSON.stringify(updated));
+      return updated;
+    });
+    if (isDbConnected) syncGlossaryTerm(entry).catch(console.warn);
+    return true;
+  };
+
+  const updateGlossaryTerm = (id: string, updates: Partial<Omit<GlossaryTerm, 'id' | 'addedAt'>>) => {
+    setGlossary(prev => {
+      const updated = prev.map(g => g.id === id ? { ...g, ...updates } : g);
+      localStorage.setItem('ar_glossary', JSON.stringify(updated));
+      const changed = updated.find(g => g.id === id);
+      if (changed && isDbConnected) syncGlossaryTerm(changed).catch(console.warn);
       return updated;
     });
   };
@@ -330,13 +554,132 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('ar_glossary', JSON.stringify(updated));
       return updated;
     });
+    if (isDbConnected) deleteGlossaryTermFromDb(id).catch(console.warn);
   };
 
   const markModuleComplete = (moduleId: string) => {
+    const course = courses.find(c => c.id === courseProgress.activeCourseId) || BUILT_IN_COURSE;
+    for (const stage of course.stages) {
+      const mod = stage.modules.find(m => m.id === moduleId);
+      if (mod?.keyTerms?.length) {
+        mod.keyTerms.forEach(t => {
+          addGlossaryTerm(t, `Término clave del módulo "${mod.title}".`, {
+            source: `Curso: ${course.title}`,
+            category: 'General'
+          });
+        });
+      }
+    }
+
     setCourseProgress(prev => {
-      if (prev.completedModules.includes(moduleId)) return prev;
-      const updated = { ...prev, completedModules: [...prev.completedModules, moduleId] };
-      localStorage.setItem('ar_course_progress', JSON.stringify(updated));
+      const courseId = prev.activeCourseId;
+      const current = prev.progressByCourse[courseId] || [];
+      if (current.includes(moduleId)) return prev;
+      const updated: CourseProgress = {
+        ...prev,
+        progressByCourse: {
+          ...prev.progressByCourse,
+          [courseId]: [...current, moduleId]
+        }
+      };
+      persistCourseProgress(updated);
+      return updated;
+    });
+  };
+
+  const setActiveCourse = (courseId: string) => {
+    setCourseProgress(prev => {
+      const updated: CourseProgress = {
+        activeCourseId: courseId,
+        progressByCourse: {
+          ...prev.progressByCourse,
+          [courseId]: prev.progressByCourse[courseId] || []
+        }
+      };
+      persistCourseProgress(updated);
+      return updated;
+    });
+  };
+
+  const createCourse = (title: string, description: string): Course => {
+    const course: Course = {
+      id: 'course_' + Math.random().toString(36).slice(2, 9),
+      title: title.trim(),
+      description: description.trim(),
+      stages: [{
+        id: 'stage_' + Math.random().toString(36).slice(2, 6),
+        number: 1,
+        title: 'Introducción',
+        subtitle: 'Primera etapa del curso',
+        modules: []
+      }],
+      createdAt: new Date().toISOString()
+    };
+    setCourses(prev => {
+      const updated = [...prev, course];
+      persistCourses(updated);
+      return updated;
+    });
+    setActiveCourse(course.id);
+    return course;
+  };
+
+  const deleteCourse = (courseId: string) => {
+    const target = courses.find(c => c.id === courseId);
+    if (!target || target.isBuiltIn) return;
+    setCourses(prev => {
+      const updated = prev.filter(c => c.id !== courseId);
+      persistCourses(updated);
+      return updated;
+    });
+    setCourseProgress(prev => {
+      const { [courseId]: _, ...rest } = prev.progressByCourse;
+      const nextActive = prev.activeCourseId === courseId ? BUILT_IN_COURSE_ID : prev.activeCourseId;
+      const updated = { activeCourseId: nextActive, progressByCourse: rest };
+      persistCourseProgress(updated);
+      return updated;
+    });
+  };
+
+  const addCourseStage = (courseId: string, title: string, subtitle: string) => {
+    setCourses(prev => {
+      const updated = prev.map(c => {
+        if (c.id !== courseId || c.isBuiltIn) return c;
+        return {
+          ...c,
+          stages: [...c.stages, {
+            id: 'stage_' + Math.random().toString(36).slice(2, 6),
+            number: c.stages.length + 1,
+            title: title.trim(),
+            subtitle: subtitle.trim(),
+            modules: []
+          }]
+        };
+      });
+      persistCourses(updated);
+      return updated;
+    });
+  };
+
+  const addCourseModule = (courseId: string, stageId: string, title: string, content: string) => {
+    setCourses(prev => {
+      const updated = prev.map(c => {
+        if (c.id !== courseId || c.isBuiltIn) return c;
+        return {
+          ...c,
+          stages: c.stages.map(s => s.id !== stageId ? s : {
+            ...s,
+            modules: [...s.modules, {
+              id: 'mod_' + Math.random().toString(36).slice(2, 9),
+              title: title.trim(),
+              duration: '10 min',
+              content: content.trim(),
+              keyTerms: []
+            }]
+          })
+        };
+      });
+      persistCourses(updated);
       return updated;
     });
   };
@@ -374,6 +717,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotes(prev => [created, ...prev]);
     setActiveNoteId(created.id);
     return created;
+  };
+
+  const createDraftFromSource = async (source: DraftSource) => {
+    const draft = source.analysis
+      ? buildDraftFromAnalysis(source.title, source.analysis, source.source)
+      : buildDraftFromNews(source);
+    const note = await createNote(draft.title, draft.content);
+    setActiveSection('editor');
+    return note;
   };
 
   const updateNote = async (id: string, updates: Partial<Note>) => {
@@ -549,6 +901,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       config,
       updateConfig,
       createNote,
+      createDraftFromSource,
       updateNote,
       deleteNote,
       createTask,
@@ -559,9 +912,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleteEvent,
       glossary,
       addGlossaryTerm,
+      updateGlossaryTerm,
       removeGlossaryTerm,
+      courses,
       courseProgress,
+      activeCourse,
+      createCourse,
+      deleteCourse,
+      setActiveCourse,
+      addCourseStage,
+      addCourseModule,
       markModuleComplete,
+      watchlist,
+      toggleWatchlist,
+      isWatchlisted,
+      briefingHistory,
+      runBriefing,
+      autoBriefingOpen,
+      setAutoBriefingOpen,
       syncStatus,
       loading,
       isDbConnected

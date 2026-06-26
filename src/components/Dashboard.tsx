@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { MorningBriefing } from './MorningBriefing';
+import { BriefingButton } from './MorningBriefing';
+import { matchNewsToProjects, getWatchlistProjectNames } from '../utils/projectWatchlist';
 import { DeadlineBanner } from './DeadlineBanner';
 import { SkeletonNews } from './Skeleton';
 
@@ -12,7 +13,10 @@ import {
   RefreshCw, 
   ArrowRight, 
   MessageSquare,
-  Newspaper
+  Newspaper,
+  PenLine,
+  Star,
+  MapPin
 } from 'lucide-react';
 
 interface NewsItem {
@@ -25,7 +29,7 @@ interface NewsItem {
 }
 
 export const Dashboard: React.FC = () => {
-  const { notes, tasks, events, config, setActiveSection, setActiveNoteId } = useApp();
+  const { notes, tasks, events, config, setActiveSection, setActiveNoteId, createDraftFromSource, watchlist } = useApp();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loadingNews, setLoadingNews] = useState(true);
   const [newsError, setNewsError] = useState(false);
@@ -96,41 +100,124 @@ export const Dashboard: React.FC = () => {
     setActiveSection('agent');
   };
 
+  const handleCreateDraft = async (item: NewsItem) => {
+    await createDraftFromSource({
+      title: item.title,
+      snippet: item.contentSnippet,
+      source: item.source,
+      link: item.link,
+      pubDate: item.pubDate
+    });
+  };
+
+  const todayFormatted = new Date().toLocaleDateString('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  });
+
+  const commodityItems = commodities.length ? commodities : [
+    { symbol: 'COBRE', name: 'Cobre (LME)', price: 4.52, unit: 'USD/lb', change: -1.2 },
+    { symbol: 'LITIO', name: 'Litio', price: 14200, unit: 'USD/t', change: 1.85 },
+    { symbol: 'ORO', name: 'Oro', price: 2340.5, unit: 'USD/oz', change: 0.45 },
+    { symbol: 'PLATA', name: 'Plata', price: 29.15, unit: 'USD/oz', change: -0.3 }
+  ];
+
+  const getCategoryClass = (category: string) => {
+    const normalized = category.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalized.includes('internacional')) return 'internacional';
+    if (normalized.includes('nacional')) return 'nacional';
+    if (normalized.includes('tecnolog')) return 'tecnologia';
+    if (normalized.includes('mercado')) return 'mercados';
+    return 'default';
+  };
+
+  const newsWithWatchlist = news.map(item => {
+    const text = `${item.title} ${item.contentSnippet}`;
+    const matches = matchNewsToProjects(text, watchlist);
+    return { ...item, watchlistMatches: matches };
+  });
+
+  const watchlistNews = newsWithWatchlist.filter(n => n.watchlistMatches.length > 0);
+  const sortedNews = [...newsWithWatchlist].sort((a, b) => {
+    if (a.watchlistMatches.length && !b.watchlistMatches.length) return -1;
+    if (!a.watchlistMatches.length && b.watchlistMatches.length) return 1;
+    return 0;
+  });
+
+  const renderNewsCard = (item: NewsItem & { watchlistMatches: { projectId: string; projectName: string }[] }, idx: number) => {
+    const catClass = getCategoryClass(item.category);
+    return (
+      <div key={idx} className={`glass-panel news-card-item group ${item.watchlistMatches.length ? 'news-card-item--watchlist' : ''}`}>
+        <div className={`news-card-item__accent news-card-item__accent--${catClass}`} />
+        <div className="news-card-item__body">
+          <div className="flex justify-between items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`news-badge ${catClass}`}>{item.category}</span>
+              {item.watchlistMatches.map(m => (
+                <span key={m.projectId} className="watchlist-news-badge">
+                  <Star size={9} /> {m.projectName}
+                </span>
+              ))}
+            </div>
+            <span className="text-[10px] text-text-muted shrink-0">
+              {new Date(item.pubDate).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+            </span>
+          </div>
+          <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-[15px] font-semibold text-white hover:text-accent-gold transition-colors line-clamp-2 leading-snug">
+            {item.title}
+          </a>
+          <p className="text-xs text-text-secondary line-clamp-3 leading-relaxed">{item.contentSnippet}</p>
+        </div>
+        <div className="news-card-item__footer">
+          <span className="font-medium text-text-muted truncate max-w-[100px]">{item.source}</span>
+          <div className="flex items-center gap-3 shrink-0">
+            <button type="button" onClick={() => handleCreateDraft(item)} className="text-accent-steel font-semibold hover:text-white flex items-center gap-1 transition-colors text-[11px]">
+              <PenLine size={12} /> Borrador
+            </button>
+            <button type="button" onClick={() => handleDiscussWithAI(item)} className="text-accent-gold font-semibold hover:text-white flex items-center gap-1 transition-colors text-[11px]">
+              <MessageSquare size={12} /> Analizar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="main-content main-content--scroll animate-fade-in">
       <DeadlineBanner />
 
-      <div className="ticker-container no-print">
-        {(commodities.length ? commodities : [
-          { symbol: 'COBRE', name: 'Cobre (LME)', price: 4.52, unit: 'USD/lb', change: -1.2 },
-          { symbol: 'LITIO', name: 'Litio', price: 14200, unit: 'USD/t', change: 1.85 },
-          { symbol: 'ORO', name: 'Oro', price: 2340.5, unit: 'USD/oz', change: 0.45 },
-          { symbol: 'PLATA', name: 'Plata', price: 29.15, unit: 'USD/oz', change: -0.3 }
-        ]).map(c => (
-          <div key={c.symbol} className="ticker-card">
-            <span className="font-bold text-accent-gold">{c.name}</span>
-            <span className="ticker-price">
-              {c.unit.startsWith('USD') ? '$' : ''}{c.price.toLocaleString('es-AR', { maximumFractionDigits: 2 })} {c.unit}
-            </span>
-            <span className={c.change >= 0 ? 'ticker-change--up' : 'ticker-change--down'}>
-              {c.change >= 0 ? '▲' : '▼'} {Math.abs(c.change).toFixed(2)}%
-            </span>
-          </div>
-        ))}
+      <div className="ticker-wrap no-print stagger-1">
+        <div className="ticker-container">
+          {[...commodityItems, ...commodityItems].map((c, i) => (
+            <div key={`${c.symbol}-${i}`} className="ticker-card">
+              <span className="ticker-card__symbol">{c.symbol}</span>
+              <span className="font-semibold text-text-secondary">{c.name}</span>
+              <span className="ticker-price">
+                {c.unit.startsWith('USD') ? '$' : ''}{c.price.toLocaleString('es-AR', { maximumFractionDigits: 2 })}
+                <span className="text-text-muted font-normal ml-1">{c.unit}</span>
+              </span>
+              <span className={c.change >= 0 ? 'ticker-change--up' : 'ticker-change--down'}>
+                {c.change >= 0 ? '▲' : '▼'} {Math.abs(c.change).toFixed(2)}%
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Header */}
-      <header className="dashboard-hero">
+      <header className="dashboard-hero stagger-2">
         <div className="dashboard-hero__content">
+          <span className="dashboard-hero__eyebrow">{todayFormatted}</span>
           <h2 className="dashboard-hero__title">
-            <span className="text-accent-gold">Hola, Carlos</span> 👋
+            Hola, <span className="dashboard-hero__title-accent">Carlos</span>
           </h2>
           <p className="dashboard-hero__subtitle">
-            Esto es lo que está pasando hoy en tu espacio editorial de Acero & Roca.
+            Tu espacio editorial minero — borradores, tareas y actualidad del sector en un solo lugar.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 shrink-0 items-center">
-          <MorningBriefing />
+        <div className="dashboard-hero__actions">
+          <BriefingButton />
           <button 
             onClick={() => handleNoteClick(notes[0]?.id || '')}
             className="glass-button active text-sm"
@@ -141,12 +228,12 @@ export const Dashboard: React.FC = () => {
         </div>
       </header>
 
-
-      {/* Grid de Métricas */}
-      <section className="grid grid-cols-1 md:grid-cols-4 gap-5">
+      <section className="metrics-grid stagger-3">
         <div className="glass-panel metric-card metric-card--lime">
-          <div className="metric-card__icon">
-            <FileText size={24} />
+          <div className="metric-card__top">
+            <div className="metric-card__icon">
+              <FileText size={22} />
+            </div>
           </div>
           <div>
             <span className="metric-card__label">Borradores creados</span>
@@ -155,8 +242,10 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="glass-panel metric-card metric-card--steel">
-          <div className="metric-card__icon">
-            <TrendingUp size={24} />
+          <div className="metric-card__top">
+            <div className="metric-card__icon">
+              <TrendingUp size={22} />
+            </div>
           </div>
           <div>
             <span className="metric-card__label">Palabras redactadas</span>
@@ -165,18 +254,22 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="glass-panel metric-card metric-card--emerald">
-          <div className="metric-card__icon">
-            <CheckSquare size={24} />
+          <div className="metric-card__top">
+            <div className="metric-card__icon">
+              <CheckSquare size={22} />
+            </div>
           </div>
           <div>
             <span className="metric-card__label">Tareas pendientes</span>
-            <span className="metric-card__value">{pendingTasks} / {tasks.length}</span>
+            <span className="metric-card__value">{pendingTasks}<span className="text-text-muted text-lg font-medium"> / {tasks.length}</span></span>
           </div>
         </div>
 
         <div className="glass-panel metric-card metric-card--red">
-          <div className="metric-card__icon">
-            <Clock size={24} />
+          <div className="metric-card__top">
+            <div className="metric-card__icon">
+              <Clock size={22} />
+            </div>
           </div>
           <div>
             <span className="metric-card__label">Próxima entrega</span>
@@ -185,10 +278,8 @@ export const Dashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Contenido Principal (Borradores y Tareas) */}
-      <div className="dashboard-split">
-        {/* Borradores Recientes */}
-        <div className="glass-panel p-6 flex flex-col">
+      <div className="dashboard-split stagger-4">
+        <div className="glass-panel panel-section flex flex-col">
           <div className="panel-header">
             <h3 className="panel-header__title">
               <FileText size={20} />
@@ -234,8 +325,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Tareas Editorial */}
-        <div className="glass-panel p-6 flex flex-col">
+        <div className="glass-panel panel-section flex flex-col">
           <div className="panel-header">
             <h3 className="panel-header__title">
               <CheckSquare size={20} />
@@ -281,8 +371,31 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Agregador de Noticias del Sector (Se alimenta de /api/news) */}
-      <section className="glass-panel p-6 flex flex-col">
+      {watchlist.length > 0 && (
+        <section className="watchlist-alert stagger-4">
+          <div className="watchlist-alert__header">
+            <div className="flex items-center gap-2">
+              <Star size={16} className="text-accent-gold" />
+              <h3 className="watchlist-alert__title">Seguimiento de proyectos</h3>
+            </div>
+            <button type="button" onClick={() => setActiveSection('projects')} className="text-xs text-accent-gold hover:underline flex items-center gap-1">
+              <MapPin size={12} /> Gestionar watchlist
+            </button>
+          </div>
+          <div className="watchlist-alert__projects">
+            {getWatchlistProjectNames(watchlist).map(name => (
+              <span key={name} className="watchlist-project-chip">{name}</span>
+            ))}
+          </div>
+          {!loadingNews && watchlistNews.length > 0 && (
+            <p className="watchlist-alert__news-count">
+              {watchlistNews.length} noticia{watchlistNews.length !== 1 ? 's' : ''} relacionada{watchlistNews.length !== 1 ? 's' : ''} hoy
+            </p>
+          )}
+        </section>
+      )}
+
+      <section className="glass-panel panel-section flex flex-col stagger-5">
         <div className="panel-header">
           <h3 className="panel-header__title">
             <Newspaper size={22} />
@@ -308,50 +421,8 @@ export const Dashboard: React.FC = () => {
             <button onClick={fetchNews} className="glass-button text-xs">Reintentar</button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {news.map((item, idx) => {
-              const categoryClass = item.category.toLowerCase().replace(/[^a-z0-9]/g, '');
-              return (
-                <div 
-                  key={idx}
-                  className="glass-panel news-card-item border-white/5 bg-white/[0.01] group"
-                >
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                      <span className={`news-badge ${categoryClass}`}>
-                        {item.category}
-                      </span>
-                      <span className="text-[10px] text-text-muted">
-                        {new Date(item.pubDate).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                      </span>
-                    </div>
-                    <a 
-                      href={item.link} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="text-sm font-bold text-white hover:text-accent-gold transition-colors line-clamp-2 leading-snug group-hover:underline"
-                    >
-                      {item.title}
-                    </a>
-                    <p className="text-xs text-text-secondary line-clamp-3 leading-relaxed">
-                      {item.contentSnippet}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-between items-center pt-2 border-t border-white/5 text-[10px]">
-                    <span className="font-semibold text-text-muted truncate max-w-[120px]">
-                      Fuente: {item.source}
-                    </span>
-                    <button 
-                      onClick={() => handleDiscussWithAI(item)}
-                      className="text-accent-gold font-semibold hover:text-white flex items-center gap-1 transition-colors"
-                    >
-                      <MessageSquare size={12} /> Analizar con Agente
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {sortedNews.map((item, idx) => renderNewsCard(item, idx))}
           </div>
         )}
       </section>

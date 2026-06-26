@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Send, Trash2, Cpu, Loader2 } from 'lucide-react';
-
+import { Sparkles, Send, Trash2, Bot, Loader2, Zap, PenLine } from 'lucide-react';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -9,23 +8,22 @@ interface ChatMessage {
 }
 
 export const GeminiAgent: React.FC = () => {
-  const { config } = useApp();
+  const { config, createDraftFromSource } = useApp();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Mensaje de bienvenida inicial
-  const welcomeMessage = `Hola Carlos. Soy tu **Agente Minero Experto de Acero & Roca**.
-  
-¿En qué proyecto o columna trabajamos hoy? Puedo ayudarte a:
-* **Analizar proyectos locales** de cobre, oro o litio (Los Azules, Josemaría, Veladero, etc.).
-* **Explicar tecnicismos geológicos** o procesos industriales (lixiviación, flotación, RIGI).
-* **Escribir y estructurar** tus columnas dominicales o reportajes técnicos.
-* **Resumir y opinar** sobre noticias recientes del sector minero.`;
+  const welcomeMessage = `Hola Carlos. Soy tu **Agente Minero Experto** de Acero & Roca.
+
+Puedo ayudarte con:
+* **Proyectos locales** — Los Azules, Josemaría, Veladero, litio en salares
+* **Tecnicismos** — lixiviación, flotación, ley de corte, RIGI
+* **Redacción editorial** — estructura de columnas y reportajes técnicos
+* **Análisis de noticias** del sector minero argentino e internacional`;
 
   useEffect(() => {
-    // Inicializar chat
     const savedChat = sessionStorage.getItem('ar_columnist_chat');
     if (savedChat) {
       setMessages(JSON.parse(savedChat));
@@ -34,39 +32,30 @@ export const GeminiAgent: React.FC = () => {
     }
   }, []);
 
-  // Verificar si venimos del Dashboard para analizar una noticia
   useEffect(() => {
     const newsToDiscuss = localStorage.getItem('ar_discuss_news');
     if (newsToDiscuss) {
       try {
         const item = JSON.parse(newsToDiscuss);
-        localStorage.removeItem('ar_discuss_news'); // Limpiar de inmediato
-        
-        const promptText = `Hola. Me gustaría analizar esta noticia reciente del sector:
-        
-Título: "${item.title}"
-Fuente: ${item.source}
-Detalle: ${item.contentSnippet}
-Enlace: ${item.link}
+        localStorage.removeItem('ar_discuss_news');
+        const promptText = `Analiza esta noticia del sector minero:
 
-Por favor, haz un resumen ejecutivo de esta noticia y bríndame tu análisis técnico y de opinión como experto en minería para mi próxima columna en Acero & Roca.`;
-        
-        // Agregar mensaje de usuario y ejecutar llamada
-        setTimeout(() => {
-          handleSendMessage(promptText);
-        }, 300);
+**Título:** ${item.title}
+**Fuente:** ${item.source}
+**Detalle:** ${item.contentSnippet}
+
+Dame un resumen ejecutivo y tu análisis técnico-editorial para una columna en Acero & Roca.`;
+        setTimeout(() => handleSendMessage(promptText), 300);
       } catch (e) {
-        console.error('Error procesando noticia para discusión:', e);
+        console.error('Error procesando noticia:', e);
       }
     }
   }, []);
 
   useEffect(() => {
-    // Guardar historial
     if (messages.length > 0) {
       sessionStorage.setItem('ar_columnist_chat', JSON.stringify(messages));
     }
-    // Auto-scroll
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -96,39 +85,35 @@ Por favor, haz un resumen ejecutivo de esta noticia y bríndame tu análisis té
 
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
-    } catch (error: any) {
-      console.error(error);
+    } catch {
       setMessages(prev => [
-        ...prev, 
-        { 
-          role: 'assistant', 
-          content: '❌ **Error de comunicación**: No se pudo obtener respuesta del agente. Por favor, asegúrate de que el servidor local está en ejecución y que la variable de entorno `GEMINI_API_KEY` esté configurada correctamente.' 
+        ...prev,
+        {
+          role: 'assistant',
+          content: '**Error de comunicación.** Verifica que el servidor esté activo y que `GEMINI_API_KEY` esté configurada.'
         }
       ]);
     } finally {
       setLoading(false);
+      inputRef.current?.focus();
     }
   };
 
   const clearChat = () => {
-    if (window.confirm('¿Quieres limpiar la conversación actual?')) {
+    if (window.confirm('¿Limpiar la conversación actual?')) {
       const initial: ChatMessage[] = [{ role: 'assistant', content: welcomeMessage }];
       setMessages(initial);
       sessionStorage.setItem('ar_columnist_chat', JSON.stringify(initial));
     }
   };
 
-  // Convertidor de Markdown para los globos del chat
   const renderMessageContent = (text: string) => {
-    let html = text;
-    
-    html = html
+    let html = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
     const lines = html.split('\n');
     const output: string[] = [];
     let inList = false;
@@ -138,138 +123,147 @@ Por favor, haz un resumen ejecutivo de esta noticia y bríndame tu análisis té
       const isBullet = /^\*\s+/.test(trimmed);
 
       if (isBullet) {
-        if (!inList) {
-          output.push('<ul>');
-          inList = true;
-        }
+        if (!inList) { output.push('<ul>'); inList = true; }
         output.push(`<li>${trimmed.replace(/^\*\s+/, '')}</li>`);
         continue;
       }
-
-      if (inList) {
-        output.push('</ul>');
-        inList = false;
-      }
-
+      if (inList) { output.push('</ul>'); inList = false; }
       if (!trimmed) continue;
       output.push(`<p>${trimmed}</p>`);
     }
-
     if (inList) output.push('</ul>');
     return output.join('');
   };
 
   const promptTemplates = [
-    { label: 'Analizar Proyecto Los Azules', prompt: 'Dame un reporte técnico-económico detallado del proyecto de cobre Los Azules en Calingasta: reservas estimadas, ley de mineral, plan de lixiviación y estado de desarrollo.' },
-    { label: 'Efecto del RIGI en Minería', prompt: 'Explica los puntos clave del RIGI (Régimen de Incentivos) aplicados al sector minero en Argentina. ¿Cómo beneficia a los proyectos de cobre y litio?' },
-    { label: 'Concepto: Ley de Corte', prompt: 'Explica pedagógicamente qué es la "ley de corte" (cut-off grade) en un yacimiento de pórfidos de cobre y cómo influye en la viabilidad económica de una mina.' },
-    { label: 'Ideas para Columna Semanal', prompt: 'Sugiere 3 enfoques o temas de columnas de opinión potentes y actuales para escribir este domingo relacionados con la transición energética y la minería argentina.' }
+    { label: 'Los Azules', prompt: 'Dame un reporte técnico-económico del proyecto Los Azules: reservas, ley, lixiviación y estado de desarrollo.', icon: '⛏️' },
+    { label: 'RIGI y minería', prompt: 'Explica los puntos clave del RIGI aplicados al sector minero argentino. ¿Cómo beneficia proyectos de cobre y litio?', icon: '📋' },
+    { label: 'Ley de corte', prompt: 'Explica pedagógicamente qué es la ley de corte en un pórfido de cobre y cómo influye en la viabilidad económica.', icon: '📊' },
+    { label: 'Ideas de columna', prompt: 'Sugiere 3 temas potentes para una columna dominical sobre transición energética y minería argentina.', icon: '✍️' }
   ];
 
+  const showSuggestions = messages.length <= 1;
+
+  const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.content !== welcomeMessage);
+  const lastUser = [...messages].reverse().find(m => m.role === 'user');
+
+  const handleCreateDraftFromChat = async () => {
+    if (!lastAssistant) return;
+    const title = lastUser?.content.slice(0, 80) || 'Columna desde Agente IA';
+    await createDraftFromSource({
+      title,
+      analysis: lastAssistant.content,
+      source: 'Agente IA — Acero & Roca'
+    });
+  };
+
   return (
-    <div className="main-content flex flex-col animate-fade-in h-full">
-      {/* Header */}
-      <header className="flex justify-between items-center pb-4 border-b border-border-color shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-accent-gold/10 rounded-xl text-accent-gold">
-            <Cpu size={24} />
+    <div className="agent-page animate-fade-in">
+      <header className="agent-header">
+        <div className="agent-header__brand">
+          <div className="agent-header__avatar">
+            <Bot size={22} />
           </div>
           <div>
-            <h2 className="text-xl font-bold font-display text-white">Agente Experto en Minería</h2>
-            <p className="text-xs text-text-secondary">Desarrollado con Gemini - Asesor técnico, económico y editorial</p>
+            <h2 className="agent-header__title">Agente Experto en Minería</h2>
+            <p className="agent-header__meta">
+              <span className="agent-status-dot" />
+              Gemini · Asesor técnico, económico y editorial
+            </p>
           </div>
         </div>
-
-        <button 
-          onClick={clearChat}
-          className="glass-button text-xs py-1.5 hover:text-accent-red"
-          title="Limpiar Conversación"
-        >
-          <Trash2 size={14} /> Limpiar Chat
+        <div className="agent-header__actions">
+        <button onClick={clearChat} className="glass-button text-xs agent-header__clear" title="Limpiar conversación">
+          <Trash2 size={14} /> Limpiar
         </button>
+        {lastAssistant && messages.length > 1 && (
+          <button
+            type="button"
+            onClick={handleCreateDraftFromChat}
+            className="glass-button active text-xs"
+            title="Crear borrador en el editor"
+          >
+            <PenLine size={14} /> Crear borrador
+          </button>
+        )}
+        </div>
       </header>
 
-      {/* Grid de Plantillas Rápidas (Solo visibles si no hay chat largo) */}
-      {messages.length <= 1 && (
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0 mt-4">
-          {promptTemplates.map((tpl, i) => (
-            <button
-              key={i}
-              onClick={() => handleSendMessage(tpl.prompt)}
-              className="glass-panel p-4 text-left hover:border-accent-gold/40 hover:bg-white/[0.02] transition-all duration-200 flex flex-col gap-1.5"
-            >
-              <div className="flex items-center gap-2 text-accent-gold text-xs font-semibold uppercase tracking-wider">
-                <Sparkles size={12} />
-                {tpl.label}
-              </div>
-              <p className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
-                {tpl.prompt}
-              </p>
-            </button>
-          ))}
-        </section>
-      )}
-
-      {/* Área de Mensajes */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-5 py-4 min-h-0 pr-2">
-        {messages.map((msg, idx) => (
-          <div 
-            key={idx}
-            className={`flex gap-3 w-full max-w-[85%] sm:max-w-[75%] ${msg.role === 'user' ? 'self-end flex-row-reverse' : 'self-start'}`}
-          >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-              msg.role === 'user'
-                ? 'bg-accent-gold text-white font-semibold shadow-sm'
-                : 'bg-accent-steel/20 text-accent-steel border border-accent-steel/30'
-            }`}>
-              {msg.role === 'user' ? 'CF' : 'G'}
-            </div>
-
-            <div className={`p-4 rounded-xl text-sm leading-relaxed border break-words shadow-sm ${
-              msg.role === 'user'
-                ? 'bg-accent-gold/10 border-accent-gold/30 text-white'
-                : 'bg-bg-secondary border-border-color text-text-primary'
-            }`}>
-              <div 
-                className="prose-chat prose-invert"
-                dangerouslySetInnerHTML={{ __html: renderMessageContent(msg.content) }} 
-              />
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="flex gap-3 max-w-[80%] self-start">
-            <div className="w-8 h-8 rounded-lg bg-accent-steel/20 text-accent-steel border border-accent-steel/30 flex items-center justify-center">
-              <Loader2 className="animate-spin" size={14} />
-            </div>
-            <div className="p-4 rounded-xl bg-bg-secondary border border-border-color text-xs text-text-secondary flex items-center gap-2 typing-cursor shadow-sm">
-              <span>Gemini procesando y analizando datos de minería...</span>
+      <div className="agent-body glass-panel glass-panel--scrollable">
+        {showSuggestions && (
+          <div className="agent-suggestions">
+            <p className="agent-suggestions__label">
+              <Zap size={14} /> Consultas rápidas
+            </p>
+            <div className="agent-suggestions__grid">
+              {promptTemplates.map((tpl, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleSendMessage(tpl.prompt)}
+                  className="agent-suggestion-card"
+                >
+                  <span className="agent-suggestion-card__icon">{tpl.icon}</span>
+                  <span className="agent-suggestion-card__title">{tpl.label}</span>
+                  <span className="agent-suggestion-card__desc">{tpl.prompt}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
+
+        <div className="agent-messages">
+          {messages.map((msg, idx) => (
+            <div key={idx} className={`agent-msg agent-msg--${msg.role}`}>
+              <div className="agent-msg__avatar">
+                {msg.role === 'user' ? 'CF' : <Sparkles size={14} />}
+              </div>
+              <div className="agent-msg__bubble">
+                <div
+                  className="prose-chat prose-invert"
+                  dangerouslySetInnerHTML={{ __html: renderMessageContent(msg.content) }}
+                />
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="agent-msg agent-msg--assistant">
+              <div className="agent-msg__avatar agent-msg__avatar--loading">
+                <Loader2 className="animate-spin" size={14} />
+              </div>
+              <div className="agent-msg__bubble agent-msg__bubble--typing">
+                <span className="agent-typing-dots"><span /><span /><span /></span>
+                Analizando datos del sector minero...
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Input de Mensaje */}
-      <footer className="flex gap-3 items-center pt-4 border-t border-border-color shrink-0 mt-auto">
-        <input 
-          type="text" 
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Pregunta sobre proyectos mineros, leyes geológicas o redacta partes de una columna..."
-          className="glass-input flex-1 py-3 px-4"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSendMessage('');
-          }}
-          disabled={loading}
-        />
-        <button 
-          onClick={() => handleSendMessage('')}
-          className="glass-button active px-6 py-3 shadow-sm"
-          disabled={loading || !input.trim()}
-        >
-          <Send size={16} /> Enviar
-        </button>
+      <footer className="agent-composer">
+        <div className="agent-composer__inner">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Pregunta sobre proyectos, geología, RIGI o pide ayuda para redactar..."
+            className="agent-composer__input"
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(''); }}
+            disabled={loading}
+          />
+          <button
+            type="button"
+            onClick={() => handleSendMessage('')}
+            className="agent-composer__send"
+            disabled={loading || !input.trim()}
+          >
+            <Send size={18} />
+          </button>
+        </div>
+        <p className="agent-composer__hint">Enter para enviar · Respuestas generadas con IA — verificá datos críticos</p>
       </footer>
     </div>
   );

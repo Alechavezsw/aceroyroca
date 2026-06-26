@@ -47,7 +47,16 @@ CREATE TABLE IF NOT EXISTS glossary (
   term TEXT NOT NULL,
   definition TEXT NOT NULL,
   source TEXT DEFAULT '',
+  category TEXT DEFAULT 'General',
+  example TEXT,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- Store JSON para cursos custom y progreso
+CREATE TABLE IF NOT EXISTS user_editorial_store (
+  key TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
 -- Progreso del Curso
@@ -138,6 +147,7 @@ ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE glossary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE course_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_editorial_store ENABLE ROW LEVEL SECURITY;
 
 -- Políticas permisivas para anon (proyecto de uso personal)
 CREATE POLICY "Acceso total notas" ON notes FOR ALL USING (true) WITH CHECK (true);
@@ -146,6 +156,7 @@ CREATE POLICY "Acceso total eventos" ON events FOR ALL USING (true) WITH CHECK (
 CREATE POLICY "Acceso total glosario" ON glossary FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Acceso total progreso" ON course_progress FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Acceso total config" ON user_config FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Acceso total editorial store" ON user_editorial_store FOR ALL USING (true) WITH CHECK (true);
 
 -- ─────────────────────────────────────────────────────
 --  5. VISTAS útiles

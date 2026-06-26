@@ -1,73 +1,76 @@
-# React + TypeScript + Vite
+# Acero & Roca — Portal Editorial Minero
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Portal del columnista: dashboard, redacción, agente IA (Gemini), curso de minería, mapa de proyectos, glosario y kanban.
 
-Currently, two official plugins are available:
+## Desarrollo local
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+cp .env.example .env.local
+# Completar GEMINI_API_KEY (mínimo) y opcionalmente Supabase
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Abre [http://localhost:5173](http://localhost:5173).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Deploy en Vercel
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. Conectar repositorio
+
+1. [vercel.com/new](https://vercel.com/new) → importar el repo de GitHub.
+2. Vercel detecta **Vite** automáticamente (`vercel.json` ya configurado).
+3. No cambies Build Command ni Output Directory.
+
+### 2. Variables de entorno (Vercel → Settings → Environment Variables)
+
+| Variable | Entorno | Obligatoria |
+|----------|---------|-------------|
+| `GEMINI_API_KEY` | Production, Preview | Sí |
+| `VITE_SUPABASE_URL` | Production, Preview | No* |
+| `VITE_SUPABASE_ANON_KEY` | Production, Preview | No* |
+| `METALS_API_KEY` | Production, Preview | No |
+| `AGENT_API_KEY` | Production, Preview | No** |
+| `SUPABASE_SERVICE_ROLE_KEY` | Production, Preview | No** |
+
+\* Sin Supabase la app usa `localStorage` en el navegador del usuario.  
+\** Solo si usás los endpoints `/api/agent/*`.
+
+Las variables `VITE_*` deben estar definidas **antes del build** (redeploy tras agregarlas).
+
+### 3. Supabase (opcional)
+
+**Proyecto nuevo:** ejecutar `supabase_schema.sql` en SQL Editor.  
+**Proyecto existente:** ejecutar además `supabase_migration_v2.sql`.
+
+### 4. Deploy
+
+```bash
+npx vercel          # preview
+npx vercel --prod   # producción
 ```
+
+O push a `main` si tenés Git integrado con Vercel.
+
+### 5. Verificar en producción
+
+- `/` carga el dashboard
+- `/api/commodities` devuelve JSON
+- `/api/news` devuelve noticias
+- Agente IA responde (requiere `GEMINI_API_KEY`)
+
+## Estructura
+
+```
+api/           → Serverless functions (Gemini, noticias, commodities)
+src/           → Frontend React + Vite
+public/        → Assets estáticos y PWA manifest
+vercel.json    → Configuración de deploy
+```
+
+## Scripts
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Servidor de desarrollo |
+| `npm run build` | Build de producción |
+| `npm run preview` | Preview del build local |

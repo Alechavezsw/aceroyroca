@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Settings as SettingsIcon, User, Cpu, Database, Save, CheckCircle, Rss, Target, Palette } from 'lucide-react';
+import { Settings as SettingsIcon, User, Cpu, Database, Save, CheckCircle, Rss, Target, Palette, Sparkles } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 
 export const Settings: React.FC = () => {
@@ -10,6 +10,7 @@ export const Settings: React.FC = () => {
   const [rssFeeds, setRssFeeds] = useState(config.rssFeeds.join('\n'));
   const [wordGoalMin, setWordGoalMin] = useState(config.wordGoalMin);
   const [wordGoalMax, setWordGoalMax] = useState(config.wordGoalMax);
+  const [autoBriefing, setAutoBriefing] = useState(config.autoBriefing ?? true);
   const [showSavedAlert, setShowSavedAlert] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
@@ -23,7 +24,8 @@ export const Settings: React.FC = () => {
       geminiModel,
       rssFeeds: feeds,
       wordGoalMin: Math.max(100, wordGoalMin),
-      wordGoalMax: Math.max(wordGoalMin + 100, wordGoalMax)
+      wordGoalMax: Math.max(wordGoalMin + 100, wordGoalMax),
+      autoBriefing
     });
     setShowSavedAlert(true);
     setTimeout(() => setShowSavedAlert(false), 3000);
@@ -90,6 +92,26 @@ export const Settings: React.FC = () => {
             </div>
             <ThemeToggle />
           </div>
+        </div>
+
+        {/* Briefing automático */}
+        <div className="glass-panel p-5 flex flex-col gap-4">
+          <div className="flex items-center gap-2 border-b border-white/5 pb-2">
+            <Sparkles size={18} className="text-accent-steel" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white">Briefing Matutino</h3>
+          </div>
+          <label className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5 cursor-pointer">
+            <div>
+              <span className="text-xs font-semibold text-white">Generar al abrir el portal</span>
+              <p className="text-[10px] text-text-muted mt-0.5">Una vez por día, al iniciar sesión (requiere GEMINI_API_KEY)</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={autoBriefing}
+              onChange={e => setAutoBriefing(e.target.checked)}
+              className="w-4 h-4 accent-[var(--accent-gold)]"
+            />
+          </label>
         </div>
 
         {/* Sección: Objetivos editoriales */}

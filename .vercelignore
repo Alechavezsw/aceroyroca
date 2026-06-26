@@ -1,0 +1,5 @@
+marketing-campaign-management
+.cursor
+*.md
+!README.md
+supabase_migration_v2.sql

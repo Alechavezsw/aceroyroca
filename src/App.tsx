@@ -11,6 +11,7 @@ import { MiningCourse } from './components/MiningCourse';
 import { ProjectsPanel } from './components/ProjectsPanel';
 import { GlossaryPanel } from './components/GlossaryPanel';
 import { CommandSearch } from './components/CommandSearch';
+import { BriefingModal } from './components/MorningBriefing';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 const MainAppContent: React.FC = () => {
@@ -19,9 +20,10 @@ const MainAppContent: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center w-full h-screen bg-[#0A0D10] gap-4">
-        <div className="w-10 h-10 border-t-2 border-amber-500 border-solid rounded-full animate-spin"></div>
-        <p className="text-sm text-gray-400">Iniciando Portal del Columnista...</p>
+      <div className="app-loader">
+        <div className="app-loader__logo">A</div>
+        <div className="app-loader__spinner" />
+        <p className="app-loader__text">Iniciando Portal del Columnista</p>
       </div>
     );
   }
@@ -58,6 +60,7 @@ const MainAppContent: React.FC = () => {
         {renderSection()}
       </div>
       <CommandSearch />
+      <BriefingModal />
     </div>
   );
 };
