@@ -12,13 +12,16 @@ import {
   X,
   GraduationCap,
   MapPin,
-  BookMarked
+  BookMarked,
+  LogOut
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { SyncIndicator } from './SyncIndicator';
+import { useAuth } from '../context/AuthContext';
 
 export const Sidebar: React.FC = () => {
   const { activeSection, setActiveSection, createNote, isDbConnected } = useApp();
+  const { username, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
   const menuItems = [
@@ -134,9 +137,22 @@ export const Sidebar: React.FC = () => {
         </div>
 
         {/* Footer / Database Indicator */}
-        <div className="sidebar-footer flex items-center justify-between">
-          <SyncIndicator />
-          <ThemeToggle />
+        <div className="sidebar-footer">
+          <div className="flex items-center justify-between w-full mb-2">
+            <SyncIndicator />
+            <ThemeToggle />
+          </div>
+          <div className="sidebar-user-row">
+            <span className="sidebar-user-name">{username}</span>
+            <button
+              type="button"
+              onClick={logout}
+              className="sidebar-logout-btn"
+              title="Cerrar sesión"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
       </aside>
     </>

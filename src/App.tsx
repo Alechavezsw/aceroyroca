@@ -1,5 +1,7 @@
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Editor } from './components/Editor';
@@ -67,10 +69,34 @@ const MainAppContent: React.FC = () => {
 
 function App() {
   return (
+    <AuthProvider>
+      <AppGate />
+    </AuthProvider>
+  );
+}
+
+const AppGate: React.FC = () => {
+  const { username, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="app-loader">
+        <div className="app-loader__logo">A</div>
+        <div className="app-loader__spinner" />
+        <p className="app-loader__text">Verificando sesión</p>
+      </div>
+    );
+  }
+
+  if (!username) {
+    return <Login />;
+  }
+
+  return (
     <AppProvider>
       <MainAppContent />
     </AppProvider>
   );
-}
+};
 
 export default App;
