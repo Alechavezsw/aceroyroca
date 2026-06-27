@@ -1,11 +1,29 @@
+function normalizeAudioMimeType(mime: string): string {
+  const base = mime.split(';')[0].trim().toLowerCase();
+  const map: Record<string, string> = {
+    'audio/webm': 'audio/webm',
+    'audio/mp4': 'audio/mp4',
+    'audio/m4a': 'audio/mp4',
+    'audio/aac': 'audio/aac',
+    'audio/ogg': 'audio/ogg',
+    'audio/mpeg': 'audio/mpeg',
+    'audio/wav': 'audio/wav'
+  };
+  return map[base] || 'audio/webm';
+}
+
 export async function transcribeAudio(blob: Blob): Promise<string> {
+  if (blob.size < 512) {
+    throw new Error('El audio es demasiado corto. Grabá al menos 1 segundo.');
+  }
+
   const base64 = await blobToBase64(blob);
   const res = await fetch('/api/transcribe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       audioBase64: base64,
-      mimeType: blob.type || 'audio/webm'
+      mimeType: normalizeAudioMimeType(blob.type || 'audio/webm')
     })
   });
 

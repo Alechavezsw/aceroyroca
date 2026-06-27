@@ -29,12 +29,14 @@ export default async function handler(req: { method?: string; body?: Record<stri
     return;
   }
 
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  const normalizedMime = String(mimeType).split(';')[0].trim().toLowerCase() || 'audio/webm';
+  const models = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
 
   try {
     const ai = new GoogleGenAI({ apiKey });
     let transcript = '';
     let modelUsed = models[0];
+    let lastError = '';
 
     for (const model of models) {
       try {
@@ -45,7 +47,7 @@ export default async function handler(req: { method?: string; body?: Record<stri
               role: 'user',
               parts: [
                 { text: TRANSCRIBE_PROMPT },
-                { inlineData: { mimeType: String(mimeType), data: audioBase64 } }
+                { inlineData: { mimeType: normalizedMime, data: audioBase64 } }
               ]
             }
           ],
@@ -54,13 +56,17 @@ export default async function handler(req: { method?: string; body?: Record<stri
         transcript = (response.text || '').trim();
         modelUsed = model;
         if (transcript) break;
-      } catch {
-        /* try next model */
+      } catch (err: unknown) {
+        lastError = err instanceof Error ? err.message : 'Error desconocido';
+        console.warn(`Transcripción falló con ${model}:`, lastError);
       }
     }
 
     if (!transcript) {
-      res.status(422).json({ error: 'No se pudo transcribir el audio. Intenta grabar de nuevo.' });
+      res.status(422).json({
+        error: 'No se pudo transcribir el audio. Intenta grabar de nuevo hablando más cerca del micrófono.',
+        details: lastError || undefined
+      });
       return;
     }
 

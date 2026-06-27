@@ -45,11 +45,12 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al transcribir.';
       setError(msg);
+    } finally {
       setTranscribing(false);
     }
   };
 
-  const isBusy = status === 'transcribing' || disabled;
+  const isBusy = status === 'transcribing' || status === 'requesting' || disabled;
 
   return (
     <div className="voice-recorder">
@@ -64,15 +65,24 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       </div>
 
       <div className="voice-recorder__actions">
-        {status === 'idle' && (
+        {(status === 'idle' || status === 'requesting') && (
           <button
             type="button"
             disabled={isBusy}
             onClick={startRecording}
             className="voice-recorder__btn voice-recorder__btn--record"
           >
-            <Mic size={14} />
-            Grabar
+            {status === 'requesting' ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Micrófono…
+              </>
+            ) : (
+              <>
+                <Mic size={14} />
+                Grabar
+              </>
+            )}
           </button>
         )}
 

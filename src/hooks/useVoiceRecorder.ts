@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export type VoiceRecorderStatus = 'idle' | 'recording' | 'recorded' | 'transcribing';
+export type VoiceRecorderStatus = 'idle' | 'requesting' | 'recording' | 'recorded' | 'transcribing';
 
 const MAX_SECONDS = 120;
+const MIN_BYTES = 512;
 
 function pickMimeType(): string {
-  const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+  if (typeof MediaRecorder === 'undefined') return '';
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/aac',
+    'audio/ogg;codecs=opus',
+    'audio/ogg'
+  ];
   return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
 }
 
@@ -19,12 +28,7 @@ export function useVoiceRecorder() {
   const blobRef = useRef<Blob | null>(null);
   const timerRef = useRef<number | null>(null);
 
-  const cleanupStream = useCallback(() => {
-    streamRef.current?.getTracks().forEach(track => track.stop());
-    streamRef.current = null;
-  }, []);
-
-  const reset = useCallback(() => {
+  const releaseResources = useCallback(() => {
     if (timerRef.current) {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
@@ -32,34 +36,82 @@ export function useVoiceRecorder() {
     mediaRecorderRef.current = null;
     chunksRef.current = [];
     blobRef.current = null;
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+  }, []);
+
+  const reset = useCallback(() => {
+    releaseResources();
     setSeconds(0);
     setError(null);
     setStatus('idle');
-    cleanupStream();
-  }, [cleanupStream]);
+  }, [releaseResources]);
+
+  const fail = useCallback((message: string) => {
+    releaseResources();
+    setSeconds(0);
+    setStatus('idle');
+    setError(message);
+  }, [releaseResources]);
 
   const stopRecording = useCallback(() => {
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state === 'inactive') return;
-    recorder.stop();
+
     if (timerRef.current) {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
     }
+
+    try {
+      if (recorder.state === 'recording' && typeof recorder.requestData === 'function') {
+        recorder.requestData();
+      }
+    } catch {
+      /* some browsers throw if no buffered data */
+    }
+
+    recorder.stop();
   }, []);
 
   const startRecording = useCallback(async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setError('Tu navegador no soporta grabación de voz.');
+    setError(null);
+
+    if (!window.isSecureContext) {
+      fail('La grabación requiere HTTPS. Abrí el portal desde aceroyroca.vercel.app.');
       return;
     }
 
+    if (!navigator.mediaDevices?.getUserMedia) {
+      fail('Tu navegador no soporta grabación de voz.');
+      return;
+    }
+
+    if (typeof MediaRecorder === 'undefined') {
+      fail('Tu navegador no soporta MediaRecorder. Probá Chrome, Edge o Safari reciente.');
+      return;
+    }
+
+    const mimeType = pickMimeType();
+    if (!mimeType) {
+      fail('No hay formato de audio compatible en este navegador.');
+      return;
+    }
+
+    releaseResources();
+    setSeconds(0);
+    setStatus('requesting');
+
     try {
-      reset();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true
+        }
+      });
       streamRef.current = stream;
-      const mimeType = pickMimeType();
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+      const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
 
@@ -69,19 +121,29 @@ export function useVoiceRecorder() {
 
       recorder.onstop = () => {
         const type = recorder.mimeType || mimeType || 'audio/webm';
-        blobRef.current = new Blob(chunksRef.current, { type });
-        cleanupStream();
+        const blob = new Blob(chunksRef.current, { type });
+        blobRef.current = blob;
+
+        streamRef.current?.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+        mediaRecorderRef.current = null;
+
+        if (blob.size < MIN_BYTES) {
+          blobRef.current = null;
+          setError('No se capturó audio. Grabá al menos 1 segundo y volvé a intentar.');
+          setStatus('idle');
+          return;
+        }
+
         setStatus('recorded');
       };
 
       recorder.onerror = () => {
-        setError('Error durante la grabación.');
-        reset();
+        fail('Error durante la grabación.');
       };
 
-      recorder.start(250);
+      recorder.start(500);
       setStatus('recording');
-      setSeconds(0);
       timerRef.current = window.setInterval(() => {
         setSeconds(prev => {
           if (prev + 1 >= MAX_SECONDS) {
@@ -91,16 +153,21 @@ export function useVoiceRecorder() {
           return prev + 1;
         });
       }, 1000);
-    } catch {
-      setError('No se pudo acceder al micrófono. Revisa los permisos.');
-      reset();
+    } catch (err: unknown) {
+      const name = err instanceof DOMException ? err.name : '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        fail('Permiso de micrófono denegado. Permitilo en la barra del navegador y recargá.');
+      } else if (name === 'NotFoundError') {
+        fail('No se encontró micrófono en este dispositivo.');
+      } else {
+        fail('No se pudo acceder al micrófono. Revisá permisos y recargá la página.');
+      }
     }
-  }, [cleanupStream, reset, stopRecording]);
+  }, [fail, releaseResources, stopRecording]);
 
   useEffect(() => () => {
-    if (timerRef.current) window.clearInterval(timerRef.current);
-    cleanupStream();
-  }, [cleanupStream]);
+    releaseResources();
+  }, [releaseResources]);
 
   const getRecordedBlob = () => blobRef.current;
 
