@@ -16,7 +16,9 @@ import {
   Newspaper,
   PenLine,
   Star,
-  MapPin
+  MapPin,
+  Search,
+  Sparkles
 } from 'lucide-react';
 
 interface NewsItem {
@@ -26,6 +28,15 @@ interface NewsItem {
   source: string;
   contentSnippet: string;
   category: string;
+  origin?: 'rss' | 'gemini';
+}
+
+interface NewsMeta {
+  total: number;
+  rss: number;
+  gemini: number;
+  geminiEnabled: boolean;
+  query: string | null;
 }
 
 export const Dashboard: React.FC = () => {
@@ -33,6 +44,8 @@ export const Dashboard: React.FC = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loadingNews, setLoadingNews] = useState(true);
   const [newsError, setNewsError] = useState(false);
+  const [newsQuery, setNewsQuery] = useState('');
+  const [newsMeta, setNewsMeta] = useState<NewsMeta | null>(null);
   const [watchlistFilter, setWatchlistFilter] = useState<string | null>(null);
   const [commodities, setCommodities] = useState<Array<{ symbol: string; name: string; price: number; unit: string; change: number }>>([]);
 
@@ -47,21 +60,37 @@ export const Dashboard: React.FC = () => {
   useEffect(() => { fetchCommodities(); }, []);
 
   // Cargar noticias desde el backend envuelto
-  const fetchNews = async () => {
+  const fetchNews = async (query?: string) => {
     setLoadingNews(true);
     setNewsError(false);
     try {
-      const feeds = encodeURIComponent(config.rssFeeds.join(','));
-      const res = await fetch(`/api/news?feeds=${feeds}`);
+      const params = new URLSearchParams();
+      params.set('feeds', config.rssFeeds.join(','));
+      const q = (query ?? newsQuery).trim();
+      if (q) params.set('q', q);
+      const res = await fetch(`/api/news?${params.toString()}`);
       if (!res.ok) throw new Error('Error de red');
       const data = await res.json();
-      setNews(data);
+      const items = Array.isArray(data) ? data : data.items || [];
+      setNews(items);
+      setNewsMeta(Array.isArray(data) ? null : data.meta || null);
     } catch (e) {
       console.error('Error cargando noticias:', e);
       setNewsError(true);
+      setNewsMeta(null);
     } finally {
       setLoadingNews(false);
     }
+  };
+
+  const handleNewsSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchNews(newsQuery);
+  };
+
+  const clearNewsSearch = () => {
+    setNewsQuery('');
+    fetchNews('');
   };
 
   useEffect(() => {
@@ -159,6 +188,11 @@ export const Dashboard: React.FC = () => {
           <div className="flex justify-between items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`news-badge ${catClass}`}>{item.category}</span>
+              {item.origin === 'gemini' && (
+                <span className="news-badge news-badge--gemini">
+                  <Sparkles size={9} /> Gemini Search
+                </span>
+              )}
               {item.watchlistMatches.map(m => (
                 <span key={m.projectId} className="watchlist-news-badge">
                   <Star size={9} /> {m.projectName}
@@ -421,20 +455,54 @@ export const Dashboard: React.FC = () => {
       )}
 
       <section className="glass-panel panel-section flex flex-col stagger-5">
-        <div className="panel-header">
-          <h3 className="panel-header__title">
-            <Newspaper size={22} />
-            Actualidad Minera Nacional e Internacional
-          </h3>
+        <div className="panel-header flex-wrap gap-3">
+          <div className="flex flex-col gap-1 min-w-0">
+            <h3 className="panel-header__title">
+              <Newspaper size={22} />
+              Actualidad Minera Nacional e Internacional
+            </h3>
+            {newsMeta && !loadingNews && (
+              <p className="text-[11px] text-text-muted">
+                {newsMeta.total} noticias externas
+                {newsMeta.geminiEnabled && (
+                  <> · {newsMeta.rss} RSS · {newsMeta.gemini} Google Search (Gemini)</>
+                )}
+                {newsMeta.query && <> · búsqueda: «{newsMeta.query}»</>}
+                {' · '}sin notas de aceroyroca.com
+              </p>
+            )}
+          </div>
           <button 
-            onClick={fetchNews}
-            className="glass-button text-xs py-1.5 px-3"
+            onClick={() => fetchNews()}
+            className="glass-button text-xs py-1.5 px-3 shrink-0"
             disabled={loadingNews}
           >
             <RefreshCw size={12} className={loadingNews ? 'animate-spin' : ''} />
             Actualizar Noticias
           </button>
         </div>
+
+        <form onSubmit={handleNewsSearch} className="news-search-bar no-print">
+          <div className="news-search-bar__input-wrap">
+            <Search size={14} className="news-search-bar__icon" />
+            <input
+              type="search"
+              value={newsQuery}
+              onChange={e => setNewsQuery(e.target.value)}
+              placeholder="Buscar con Gemini: Los Azules, RIGI, litio NOA, tratado minero Chile…"
+              className="glass-input news-search-bar__input"
+              disabled={loadingNews}
+            />
+          </div>
+          <button type="submit" className="glass-button active text-xs py-2 px-4 shrink-0" disabled={loadingNews}>
+            <Sparkles size={12} /> Buscar
+          </button>
+          {newsQuery && (
+            <button type="button" onClick={clearNewsSearch} className="glass-button text-xs py-2 px-3 shrink-0" disabled={loadingNews}>
+              Limpiar
+            </button>
+          )}
+        </form>
 
         {loadingNews ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -443,7 +511,7 @@ export const Dashboard: React.FC = () => {
         ) : newsError ? (
           <div className="text-center py-8">
             <p className="text-sm text-accent-red mb-2">Error al cargar feeds de noticias externas.</p>
-            <button onClick={fetchNews} className="glass-button text-xs">Reintentar</button>
+            <button onClick={() => fetchNews()} className="glass-button text-xs">Reintentar</button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
