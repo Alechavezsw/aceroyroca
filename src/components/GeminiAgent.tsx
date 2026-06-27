@@ -15,7 +15,7 @@ export const GeminiAgent: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const welcomeMessage = `Hola Carlos. Soy tu **Agente Minero Experto** de Acero & Roca.
+  const welcomeMessage = `Hola Ale. Soy tu **Agente Minero Experto** de Acero & Roca.
 
 Puedo ayudarte con:
 * **Proyectos locales** — Los Azules, Josemaría, Veladero, litio en salares
@@ -70,27 +70,34 @@ Dame un resumen ejecutivo y tu análisis técnico-editorial para una columna en 
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
 
+    const apiMessages = newMessages[0]?.role === 'assistant'
+      ? newMessages.slice(1)
+      : newMessages;
+
     try {
       const res = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: newMessages,
+          messages: apiMessages.length ? apiMessages : [userMessage],
           temperature: 0.7,
           model: config.geminiModel
         })
       });
 
-      if (!res.ok) throw new Error('Error al conectar con el servidor.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.details || 'Error al conectar con el servidor.');
+      }
 
-      const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error desconocido';
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          content: '**Error de comunicación.** Verifica que el servidor esté activo y que `GEMINI_API_KEY` esté configurada.'
+          content: `**Error de comunicación.** ${msg}\n\nVerificá que \`GEMINI_API_KEY\` esté en Vercel y redeployá.`
         }
       ]);
     } finally {
@@ -100,11 +107,9 @@ Dame un resumen ejecutivo y tu análisis técnico-editorial para una columna en 
   };
 
   const clearChat = () => {
-    if (window.confirm('¿Limpiar la conversación actual?')) {
-      const initial: ChatMessage[] = [{ role: 'assistant', content: welcomeMessage }];
-      setMessages(initial);
-      sessionStorage.setItem('ar_columnist_chat', JSON.stringify(initial));
-    }
+    const initial: ChatMessage[] = [{ role: 'assistant', content: welcomeMessage }];
+    setMessages(initial);
+    sessionStorage.setItem('ar_columnist_chat', JSON.stringify(initial));
   };
 
   const renderMessageContent = (text: string) => {
@@ -216,7 +221,7 @@ Dame un resumen ejecutivo y tu análisis técnico-editorial para una columna en 
           {messages.map((msg, idx) => (
             <div key={idx} className={`agent-msg agent-msg--${msg.role}`}>
               <div className="agent-msg__avatar">
-                {msg.role === 'user' ? 'CF' : <Sparkles size={14} />}
+                {msg.role === 'user' ? 'AC' : <Sparkles size={14} />}
               </div>
               <div className="agent-msg__bubble">
                 <div

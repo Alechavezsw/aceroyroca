@@ -1,5 +1,5 @@
 import { supabase } from '../supabase/client';
-import type { GlossaryTerm, CourseProgress } from '../context/AppContext';
+import type { GlossaryTerm, CourseProgress, AppConfig } from '../context/AppContext';
 import type { Course } from '../data/courses';
 
 const STORE_KEYS = {
@@ -152,4 +152,49 @@ export function mergeGlossary(local: GlossaryTerm[], remote: GlossaryTerm[]): Gl
   return Array.from(map.values()).sort(
     (a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
   );
+}
+
+interface DbUserConfigRow {
+  author_name: string;
+  gemini_model: string;
+  word_goal_min: number;
+  word_goal_max: number;
+  rss_feeds: string[];
+}
+
+export async function fetchUserConfigFromDb(): Promise<Partial<AppConfig> | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('user_config')
+    .select('author_name, gemini_model, word_goal_min, word_goal_max, rss_feeds')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.warn('Sync config (lectura):', error?.message);
+    return null;
+  }
+
+  const row = data as DbUserConfigRow;
+  return {
+    authorName: row.author_name,
+    geminiModel: row.gemini_model,
+    wordGoalMin: row.word_goal_min,
+    wordGoalMax: row.word_goal_max,
+    rssFeeds: row.rss_feeds
+  };
+}
+
+export async function saveUserConfigToDb(config: AppConfig): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.from('user_config').upsert({
+    id: 1,
+    author_name: config.authorName,
+    gemini_model: config.geminiModel,
+    word_goal_min: config.wordGoalMin,
+    word_goal_max: config.wordGoalMax,
+    rss_feeds: config.rssFeeds,
+    updated_at: new Date().toISOString()
+  });
+  if (error) console.warn('Sync config (escritura):', error.message);
 }

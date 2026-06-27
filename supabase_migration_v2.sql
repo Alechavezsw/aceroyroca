@@ -17,3 +17,6 @@ CREATE POLICY "Acceso total editorial store" ON user_editorial_store
   FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_editorial_store_updated ON user_editorial_store(updated_at DESC);
+
+-- Nombre de autor por defecto
+UPDATE user_config SET author_name = 'Ale Chavez' WHERE id = 1 AND author_name = 'Carlos Fernández';

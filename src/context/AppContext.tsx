@@ -14,7 +14,9 @@ import {
   fetchWatchlist,
   saveWatchlist as syncWatchlist,
   fetchBriefingHistory,
-  saveBriefingHistoryRemote
+  saveBriefingHistoryRemote,
+  fetchUserConfigFromDb,
+  saveUserConfigToDb
 } from '../utils/editorialSync';
 import {
   buildBriefingPrompt,
@@ -244,8 +246,8 @@ const DEFAULT_EVENTS: CalendarEvent[] = [
 ];
 
 const DEFAULT_CONFIG: AppConfig = {
-  authorName: 'Carlos Fernández',
-  geminiModel: 'gemini-1.5-flash',
+  authorName: 'Ale Chavez',
+  geminiModel: 'gemini-2.0-flash',
   localApiKey: '',
   theme: 'dark',
   rssFeeds: [
@@ -289,11 +291,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Cargar datos (Supabase o LocalStorage)
   useEffect(() => {
     const initializeData = async () => {
-      // 1. Cargar Configuración
+      // 1. Cargar Configuración (local + Supabase)
+      let mergedConfig: AppConfig = { ...DEFAULT_CONFIG };
       const savedConfig = localStorage.getItem('ar_columnist_config');
       if (savedConfig) {
-        setConfig({ ...DEFAULT_CONFIG, ...JSON.parse(savedConfig) });
+        mergedConfig = { ...mergedConfig, ...JSON.parse(savedConfig) };
       }
+
+      if (isSupabaseConfigured && supabase) {
+        const remoteConfig = await fetchUserConfigFromDb();
+        if (remoteConfig) {
+          mergedConfig = { ...mergedConfig, ...remoteConfig };
+        }
+      }
+
+      if (mergedConfig.authorName === 'Carlos Fernández') {
+        mergedConfig.authorName = 'Ale Chavez';
+      }
+
+      localStorage.setItem('ar_columnist_config', JSON.stringify(mergedConfig));
+      if (isSupabaseConfigured && supabase) {
+        saveUserConfigToDb(mergedConfig).catch(console.warn);
+      }
+
+      setConfig(mergedConfig);
+      document.documentElement.setAttribute('data-theme', mergedConfig.theme || 'dark');
 
       const savedGlossary = localStorage.getItem('ar_glossary');
       const localGlossary: GlossaryTerm[] = savedGlossary ? JSON.parse(savedGlossary) : DEFAULT_GLOSSARY;
@@ -324,8 +346,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedCourses) {
         mergedCourses = [BUILT_IN_COURSE, ...JSON.parse(savedCourses)];
       }
-
-      document.documentElement.setAttribute('data-theme', (savedConfig ? JSON.parse(savedConfig).theme : 'dark') || 'dark');
 
       // 2. Cargar Datos
       if (isSupabaseConfigured && supabase) {
@@ -363,6 +383,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (remoteWatchlist?.length) {
             mergedWatchlist = remoteWatchlist;
             saveWatchlist(mergedWatchlist);
+          } else if (mergedWatchlist.length) {
+            syncWatchlist(mergedWatchlist).catch(console.warn);
           }
 
           if (remoteBriefings?.length) {
@@ -410,7 +432,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const persistWatchlist = (ids: string[]) => {
     saveWatchlist(ids);
-    if (isDbConnected) syncWatchlist(ids).catch(console.warn);
+    syncWatchlist(ids).catch(console.warn);
   };
 
   const persistBriefingHistory = (history: BriefingEntry[]) => {
@@ -495,6 +517,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (newConfig.theme) {
         document.documentElement.setAttribute('data-theme', newConfig.theme);
       }
+      saveUserConfigToDb(updated).catch(console.warn);
       return updated;
     });
   };

@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS course_progress (
 -- Configuración del usuario
 CREATE TABLE IF NOT EXISTS user_config (
   id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),  -- Singleton: solo una fila
-  author_name TEXT DEFAULT 'Carlos Fernández',
+  author_name TEXT DEFAULT 'Ale Chavez',
   gemini_model TEXT DEFAULT 'gemini-3.5-flash',
   word_goal_min INTEGER DEFAULT 800,
   word_goal_max INTEGER DEFAULT 1200,

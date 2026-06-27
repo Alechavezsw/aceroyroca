@@ -35,24 +35,21 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  const { messages, temperature = 0.7, model: requestedModel = 'gemini-2.0-flash' } = req.body || {};
+
+  if (!messages || !Array.isArray(messages)) {
+    res.status(400).json({ error: 'El cuerpo de la petición debe contener un arreglo de "messages".' });
+    return;
+  }
+
+  const contents = messages.map((msg: any) => ({
+    role: msg.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: msg.content }]
+  }));
+
   try {
-    const { messages, temperature = 0.7, model: requestedModel = 'gemini-3.5-flash' } = req.body;
-
-    if (!messages || !Array.isArray(messages)) {
-      res.status(400).json({ error: 'El cuerpo de la petición debe contener un arreglo de "messages".' });
-      return;
-    }
-
     const ai = new GoogleGenAI({ apiKey });
 
-    // Construir el historial de mensajes para el nuevo SDK
-    // El nuevo SDK usa el formato { role: 'user' | 'model', parts: [{ text: string }] }
-    const contents = messages.map((msg: any) => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }));
-
-    // Usar generateContent con el historial completo
     const response = await ai.models.generateContent({
       model: requestedModel,
       contents,
@@ -63,13 +60,33 @@ export default async function handler(req: any, res: any) {
       }
     });
 
-    const responseText = response.text || '';
-
     res.status(200).json({
       role: 'assistant',
-      content: responseText
+      content: response.text || ''
     });
   } catch (error: any) {
+    const fallbackModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.5-flash'];
+    const fallbacks = fallbackModels.filter(m => m !== requestedModel);
+
+    for (const fallback of fallbacks) {
+      try {
+        const ai = new GoogleGenAI({ apiKey });
+        const response = await ai.models.generateContent({
+          model: fallback,
+          contents,
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            temperature,
+            maxOutputTokens: 4096,
+          }
+        });
+        res.status(200).json({ role: 'assistant', content: response.text || '', modelUsed: fallback });
+        return;
+      } catch {
+        /* try next */
+      }
+    }
+
     console.error('Error en Gemini API proxy:', error);
     res.status(500).json({ 
       error: 'Error interno procesando la solicitud con Gemini.', 

@@ -33,6 +33,7 @@ export const Dashboard: React.FC = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loadingNews, setLoadingNews] = useState(true);
   const [newsError, setNewsError] = useState(false);
+  const [watchlistFilter, setWatchlistFilter] = useState<string | null>(null);
   const [commodities, setCommodities] = useState<Array<{ symbol: string; name: string; price: number; unit: string; change: number }>>([]);
 
   const fetchCommodities = async () => {
@@ -144,6 +145,10 @@ export const Dashboard: React.FC = () => {
     if (!a.watchlistMatches.length && b.watchlistMatches.length) return 1;
     return 0;
   });
+
+  const filteredNews = watchlistFilter
+    ? sortedNews.filter(n => n.watchlistMatches.some(m => m.projectId === watchlistFilter))
+    : sortedNews;
 
   const renderNewsCard = (item: NewsItem & { watchlistMatches: { projectId: string; projectName: string }[] }, idx: number) => {
     const catClass = getCategoryClass(item.category);
@@ -383,10 +388,30 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
           <div className="watchlist-alert__projects">
-            {getWatchlistProjectNames(watchlist).map(name => (
-              <span key={name} className="watchlist-project-chip">{name}</span>
-            ))}
+            {watchlist.map(id => {
+              const name = getWatchlistProjectNames([id])[0];
+              if (!name) return null;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setWatchlistFilter(prev => (prev === id ? null : id))}
+                  className={`watchlist-project-chip ${watchlistFilter === id ? 'is-active' : ''}`}
+                >
+                  {name}
+                </button>
+              );
+            })}
           </div>
+          {watchlistFilter && (
+            <button
+              type="button"
+              onClick={() => setWatchlistFilter(null)}
+              className="text-xs text-text-muted hover:text-accent-gold mt-2"
+            >
+              Ver todas las noticias
+            </button>
+          )}
           {!loadingNews && watchlistNews.length > 0 && (
             <p className="watchlist-alert__news-count">
               {watchlistNews.length} noticia{watchlistNews.length !== 1 ? 's' : ''} relacionada{watchlistNews.length !== 1 ? 's' : ''} hoy
@@ -422,7 +447,7 @@ export const Dashboard: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {sortedNews.map((item, idx) => renderNewsCard(item, idx))}
+            {filteredNews.map((item, idx) => renderNewsCard(item, idx))}
           </div>
         )}
       </section>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Settings as SettingsIcon, User, Cpu, Database, Save, CheckCircle, Rss, Target, Palette, Sparkles } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
@@ -12,6 +12,15 @@ export const Settings: React.FC = () => {
   const [wordGoalMax, setWordGoalMax] = useState(config.wordGoalMax);
   const [autoBriefing, setAutoBriefing] = useState(config.autoBriefing ?? true);
   const [showSavedAlert, setShowSavedAlert] = useState(false);
+
+  useEffect(() => {
+    setAuthorName(config.authorName);
+    setGeminiModel(config.geminiModel);
+    setRssFeeds(config.rssFeeds.join('\n'));
+    setWordGoalMin(config.wordGoalMin);
+    setWordGoalMax(config.wordGoalMax);
+    setAutoBriefing(config.autoBriefing ?? true);
+  }, [config]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +78,7 @@ export const Settings: React.FC = () => {
               type="text"
               value={authorName}
               onChange={(e) => setAuthorName(e.target.value)}
-              placeholder="Ej: Carlos Fernández"
+              placeholder="Ej: Ale Chavez"
               className="glass-input"
               required
             />
@@ -162,8 +171,9 @@ export const Settings: React.FC = () => {
               onChange={(e) => setGeminiModel(e.target.value)}
               className="glass-input text-sm"
             >
-              <option value="gemini-3.5-flash">Gemini 3.5 Flash (Recomendado: Ultra veloz y preciso)</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Razonamiento profundo y técnico complejo)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash (Recomendado: rápido y estable)</option>
+              <option value="gemini-3.5-flash">Gemini 3.5 Flash (Última generación)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Razonamiento profundo)</option>
             </select>
             <span className="text-[10px] text-text-muted mt-1">
               Las peticiones de IA se procesan de manera segura a través de Vercel Serverless Functions para proteger tu API Key.
