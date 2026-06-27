@@ -215,7 +215,7 @@ export const Dashboard: React.FC = () => {
         <div className="dashboard-hero__content">
           <span className="dashboard-hero__eyebrow">{todayFormatted}</span>
           <h2 className="dashboard-hero__title">
-            Hola, <span className="dashboard-hero__title-accent">Carlos</span>
+            Hola, <span className="dashboard-hero__title-accent">{config.authorName.split(' ')[0]}</span>
           </h2>
           <p className="dashboard-hero__subtitle">
             Tu espacio editorial minero — borradores, tareas y actualidad del sector en un solo lugar.

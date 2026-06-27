@@ -78,7 +78,8 @@ export const Editor: React.FC = () => {
   }, [activeNote]);
 
   const applyTemplate = async (content: string, title: string) => {
-    await createNote(title, content);
+    const body = content.replace(/\{\{author\}\}/g, config.authorName);
+    await createNote(title, body);
     setShowTemplates(false);
   };
 

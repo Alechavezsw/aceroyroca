@@ -1,6 +1,6 @@
 # Acero & Roca — Guía para Claude Code
 
-Portal editorial minero de Carlos Fernández (San Juan, Argentina): columnas, kanban, calendario, glosario, cursos y agente IA.
+Portal editorial minero de Ale Chavez (San Juan, Argentina): columnas, kanban, calendario, glosario, cursos y agente IA.
 
 ## Tu rol
 

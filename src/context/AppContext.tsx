@@ -166,7 +166,7 @@ const DEFAULT_NOTES: Note[] = [
     title: 'El Cobre de San Juan: Clave para la Transición Energética',
     content: `# El Cobre de San Juan: Clave para la Transición Energética
 
-Por Carlos Fernández
+Por Ale Chavez
 
 El avance de los proyectos de cobre en la provincia de San Juan representa una de las oportunidades económicas más transformadoras de las últimas décadas para Argentina. Con yacimientos de escala mundial como **Los Azules**, **Josemaría**, **El Pachón** y **Filo del Sol**, la provincia cuyana concentra cerca del 80% de los recursos de cobre identificados en el país.
 
@@ -236,7 +236,7 @@ const DEFAULT_EVENTS: CalendarEvent[] = [
   },
   {
     id: '2-default-event',
-    title: 'Reunión de pauta con Carlos Fernández',
+    title: 'Reunión de pauta editorial',
     description: 'Definición de temas principales y enfoque de investigación de la semana.',
     start_date: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] + 'T14:30:00Z',
     end_date: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] + 'T15:30:00Z',
@@ -305,7 +305,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      if (mergedConfig.authorName === 'Carlos Fernández') {
+      if (!mergedConfig.authorName || ['Carlos Fernández', 'Carlos'].includes(mergedConfig.authorName)) {
         mergedConfig.authorName = 'Ale Chavez';
       }
 
@@ -453,7 +453,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isWatchlisted = (projectId: string) => watchlist.includes(projectId);
 
   const runBriefing = async (opts?: { silent?: boolean }): Promise<BriefingEntry | null> => {
-    const prompt = buildBriefingPrompt(notes, tasks, events, getWatchlistProjectNames(watchlist));
+    const prompt = buildBriefingPrompt(notes, tasks, events, getWatchlistProjectNames(watchlist), config.authorName);
     try {
       const content = await fetchBriefingFromApi(prompt, config.geminiModel);
       const entry = createBriefingEntry(content);

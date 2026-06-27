@@ -15,7 +15,8 @@ export function buildBriefingPrompt(
   notes: Note[],
   tasks: Task[],
   events: CalendarEvent[],
-  watchlistNames: string[] = []
+  watchlistNames: string[] = [],
+  authorName = 'Ale Chavez'
 ): string {
   const pendingTasks = tasks.filter(t => t.status !== 'published').slice(0, 5);
   const nextDelivery = events
@@ -26,7 +27,7 @@ export function buildBriefingPrompt(
     ? `- Proyectos en seguimiento: ${watchlistNames.join(', ')}`
     : '';
 
-  return `Eres el asistente editorial de Carlos Fernández (Acero & Roca).
+  return `Eres el asistente editorial de ${authorName} (Acero & Roca).
 
 DATOS DEL DÍA:
 - Borradores activos: ${notes.length}

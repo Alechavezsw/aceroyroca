@@ -12,7 +12,7 @@ export const COLUMN_TEMPLATES: ColumnTemplate[] = [
     description: 'Tesis, argumentos y cierre editorial para el domingo.',
     content: `# Título de la Columna
 
-Por Carlos Fernández
+Por {{author}}
 
 ## El gancho
 Escribe aquí una frase contundente que capture la atención del lector en las primeras líneas.
