@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { filterExternalNews } from './newsExclude';
+import { filterExternalNews } from './newsExclude.js';
 
 export interface SearchNewsItem {
   title: string;

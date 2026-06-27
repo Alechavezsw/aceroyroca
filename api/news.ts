@@ -1,6 +1,6 @@
 import Parser from 'rss-parser';
-import { fetchGeminiSearchNews } from './geminiNewsSearch';
-import { filterExternalNews, googleNewsQueryWithExclusions, isOwnPublication } from './newsExclude';
+import { fetchGeminiSearchNews } from './geminiNewsSearch.js';
+import { filterExternalNews, googleNewsQueryWithExclusions, isOwnPublication } from './newsExclude.js';
 
 const parser = new Parser();
 

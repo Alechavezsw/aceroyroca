@@ -1,4 +1,4 @@
-import { authenticate, getSupabaseClient } from './utils/auth';
+import { authenticate, getSupabaseClient } from './utils/auth.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method === 'OPTIONS') {
