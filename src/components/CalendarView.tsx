@@ -8,6 +8,7 @@ import {
   Trash2, 
   X
 } from 'lucide-react';
+import { VoiceRecorder } from './VoiceRecorder';
 
 
 const EVENT_TYPES = [
@@ -33,6 +34,7 @@ export const CalendarView: React.FC = () => {
   const [formType, setFormType] = useState<CalendarEvent['type']>('event');
   const [formNoteId, setFormNoteId] = useState<string>('');
   const [formTaskId, setFormTaskId] = useState<string>('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -100,6 +102,7 @@ export const CalendarView: React.FC = () => {
     setFormType('event');
     setFormNoteId('');
     setFormTaskId('');
+    setFormError(null);
     setShowModal(true);
   };
 
@@ -114,41 +117,48 @@ export const CalendarView: React.FC = () => {
     setFormType(event.type);
     setFormNoteId(event.note_id || '');
     setFormTaskId(event.task_id || '');
+    setFormError(null);
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim()) return;
+    setFormError(null);
 
-    const start_date = `${selectedDateStr}T${formTime}:00Z`;
-    const end_date = `${selectedDateStr}T${formEndTime}:00Z`;
+    const start_date = `${selectedDateStr}T${formTime}:00`;
+    const end_date = `${selectedDateStr}T${formEndTime}:00`;
 
-    if (selectedEvent) {
-      // Modificar evento existente
-      await updateEvent(selectedEvent.id, {
-        title: formTitle,
-        description: formDesc,
-        start_date,
-        end_date,
-        type: formType,
-        note_id: formNoteId || null,
-        task_id: formTaskId || null
-      });
-    } else {
-      // Crear nuevo evento
-      await createEvent({
-        title: formTitle,
-        description: formDesc,
-        start_date,
-        end_date,
-        type: formType,
-        note_id: formNoteId || null,
-        task_id: formTaskId || null
-      });
+    try {
+      if (selectedEvent) {
+        await updateEvent(selectedEvent.id, {
+          title: formTitle,
+          description: formDesc,
+          start_date,
+          end_date,
+          type: formType,
+          note_id: formNoteId || null,
+          task_id: formTaskId || null
+        });
+      } else {
+        await createEvent({
+          title: formTitle,
+          description: formDesc,
+          start_date,
+          end_date,
+          type: formType,
+          note_id: formNoteId || null,
+          task_id: formTaskId || null
+        });
+      }
+      setShowModal(false);
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : 'No se pudo guardar el evento. Revisa la conexión con Supabase.';
+      setFormError(msg);
     }
-
-    setShowModal(false);
   };
 
   const handleDeleteEvent = async () => {
@@ -158,29 +168,33 @@ export const CalendarView: React.FC = () => {
     }
   };
 
+  const appendTranscription = (text: string) => {
+    setFormDesc(prev => (prev.trim() ? `${prev.trim()}\n\n${text}` : text));
+  };
+
   return (
-    <div className="main-content main-content--viewport flex flex-col animate-fade-in">
+    <div className="main-content main-content--viewport calendar-view animate-fade-in">
       {/* Header */}
-      <header className="flex justify-between items-center pb-4 border-b border-border-color">
-        <div>
-          <h2 className="text-xl font-bold font-display text-white">Agenda Editorial</h2>
-          <p className="text-xs text-text-secondary">Monitorea plazos de entrega, entrevistas con líderes mineros y reuniones de pauta</p>
+      <header className="calendar-view__header">
+        <div className="calendar-view__header-text">
+          <h2 className="text-lg sm:text-xl font-bold font-display text-white">Agenda Editorial</h2>
+          <p className="text-[11px] sm:text-xs text-text-secondary">Monitorea plazos de entrega, entrevistas con líderes mineros y reuniones de pauta</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigateMonth('prev')} className="glass-button p-2">
+        <div className="calendar-view__nav">
+          <button onClick={() => navigateMonth('prev')} className="glass-button p-2" aria-label="Mes anterior">
             <ChevronLeft size={16} />
           </button>
-          <span className="font-display font-bold text-white text-md min-w-[120px] text-center">
+          <span className="font-display font-bold text-white text-sm sm:text-md min-w-[100px] sm:min-w-[120px] text-center">
             {MONTHS[month]} {year}
           </span>
-          <button onClick={() => navigateMonth('next')} className="glass-button p-2">
+          <button onClick={() => navigateMonth('next')} className="glass-button p-2" aria-label="Mes siguiente">
             <ChevronRight size={16} />
           </button>
         </div>
       </header>
 
       {/* Leyenda de Tipos de Eventos */}
-      <section className="flex flex-wrap gap-4 my-3 text-xs text-text-secondary">
+      <section className="calendar-view__legend">
         {EVENT_TYPES.map(type => (
           <div key={type.id} className="flex items-center gap-1.5">
             <span className={`w-2.5 h-2.5 rounded-full ${type.color.split(' ')[0]}`} />
@@ -190,9 +204,9 @@ export const CalendarView: React.FC = () => {
       </section>
 
       {/* Grid del Calendario */}
-      <div className="flex-1 flex flex-col min-h-0 mt-1">
+      <div className="calendar-view__body">
         {/* Cabecera del Grid (Días de la semana) */}
-        <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-text-muted uppercase tracking-wider py-2">
+        <div className="calendar-view__weekdays">
           {DAYS_OF_WEEK.map(day => (
             <div key={day}>{day}</div>
           ))}
@@ -208,7 +222,7 @@ export const CalendarView: React.FC = () => {
               <div 
                 key={idx}
                 onClick={() => handleCellClick(cell.dateStr)}
-                className={`calendar-day min-h-[100px] cursor-pointer group ${
+                className={`calendar-day min-h-[72px] sm:min-h-[100px] cursor-pointer group ${
                   cell.isCurrentMonth ? 'current-month' : 'other-month'
                 } ${cell.isToday ? 'today' : ''}`}
               >
@@ -254,18 +268,23 @@ export const CalendarView: React.FC = () => {
 
       {/* MODAL DE EVENTO */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="glass-panel w-full max-w-md p-6 bg-secondary border border-white/10 flex flex-col gap-4">
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-              <h3 className="text-md font-bold font-display text-white">
+        <div className="calendar-modal-backdrop">
+          <div className="calendar-modal glass-panel">
+            <div className="calendar-modal__header">
+              <h3 className="text-sm sm:text-md font-bold font-display text-white">
                 {selectedEvent ? 'Editar Evento de Agenda' : 'Programar Evento'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="text-text-muted hover:text-white">
+              <button onClick={() => setShowModal(false)} className="text-text-muted hover:text-white p-1" aria-label="Cerrar">
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <form onSubmit={handleSubmit} className="calendar-modal__form">
+              {formError && (
+                <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                  {formError}
+                </p>
+              )}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-text-secondary">Título del Evento</label>
                 <input 
@@ -284,11 +303,15 @@ export const CalendarView: React.FC = () => {
                   value={formDesc} 
                   onChange={(e) => setFormDesc(e.target.value)} 
                   placeholder="Ej: Entregar por email al editor jefe..."
-                  className="glass-input resize-none h-16 text-xs"
+                  className="glass-input resize-none h-20 sm:h-16 text-xs"
+                />
+                <VoiceRecorder
+                  label="Nota de voz (se transcribe al guardar)"
+                  onTranscription={appendTranscription}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="calendar-modal__time-grid">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-text-secondary">Hora Inicio</label>
                   <input 
@@ -314,7 +337,7 @@ export const CalendarView: React.FC = () => {
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-text-secondary">Tipo de Compromiso</label>
-                <div className="grid grid-cols-2 gap-2 mt-1">
+                <div className="calendar-modal__types">
                   {EVENT_TYPES.map(type => (
                     <button
                       key={type.id}
@@ -333,7 +356,7 @@ export const CalendarView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="calendar-modal__links">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-text-secondary">Vincular columna</label>
                   <select value={formNoteId} onChange={e => setFormNoteId(e.target.value)} className="glass-input text-xs">
@@ -372,7 +395,7 @@ export const CalendarView: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5">
+              <div className="calendar-modal__footer">
                 {selectedEvent ? (
                   <button 
                     type="button"

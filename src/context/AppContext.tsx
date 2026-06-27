@@ -893,16 +893,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // --- API DE EVENTOS ---
-  const createEvent = async (eventData: Omit<CalendarEvent, 'id' | 'created_at'>) => {
-    const newEvent: Omit<CalendarEvent, 'id'> = {
-      ...eventData,
-      created_at: new Date().toISOString()
-    };
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+  const toEventDbPayload = (
+    data: Omit<CalendarEvent, 'id' | 'created_at'> | Partial<CalendarEvent>
+  ): Record<string, unknown> => {
+    const payload: Record<string, unknown> = {};
+    if (data.title !== undefined) payload.title = data.title;
+    if (data.description !== undefined) payload.description = data.description;
+    if (data.start_date !== undefined) payload.start_date = data.start_date;
+    if (data.end_date !== undefined) payload.end_date = data.end_date;
+    if (data.type !== undefined) payload.type = data.type;
+    if (data.note_id !== undefined) {
+      payload.note_id = data.note_id && UUID_RE.test(data.note_id) ? data.note_id : null;
+    }
+    if (data.task_id !== undefined) {
+      payload.task_id = data.task_id && UUID_RE.test(data.task_id) ? data.task_id : null;
+    }
+    return payload;
+  };
+
+  const createEvent = async (eventData: Omit<CalendarEvent, 'id' | 'created_at'>) => {
     let created: CalendarEvent;
 
     if (isDbConnected && supabase) {
-      const { data, error } = await supabase.from('events').insert(newEvent).select().single();
+      const { data, error } = await supabase
+        .from('events')
+        .insert(toEventDbPayload(eventData))
+        .select()
+        .single();
       if (error) {
         console.error('Error insertando evento en Supabase:', error);
         throw error;
@@ -910,29 +929,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       created = data;
     } else {
       created = {
-        ...newEvent,
-        id: 'event_' + Math.random().toString(36).substr(2, 9)
+        ...eventData,
+        id: 'event_' + Math.random().toString(36).substr(2, 9),
+        created_at: new Date().toISOString()
       };
-      const updatedEvents = [...events, created];
-      setEvents(updatedEvents);
-      localStorage.setItem('ar_columnist_events', JSON.stringify(updatedEvents));
     }
 
-    setEvents(prev => [...prev, created]);
+    setEvents(prev => {
+      const updated = [...prev, created];
+      localStorage.setItem('ar_columnist_events', JSON.stringify(updated));
+      return updated;
+    });
     return created;
   };
 
   const updateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    const sanitized: Partial<CalendarEvent> = { ...updates };
+    if (updates.note_id !== undefined) {
+      sanitized.note_id = updates.note_id && UUID_RE.test(updates.note_id) ? updates.note_id : null;
+    }
+    if (updates.task_id !== undefined) {
+      sanitized.task_id = updates.task_id && UUID_RE.test(updates.task_id) ? updates.task_id : null;
+    }
+
+    setEvents(prev => {
+      const updated = prev.map(e => e.id === id ? { ...e, ...sanitized } : e);
+      localStorage.setItem('ar_columnist_events', JSON.stringify(updated));
+      return updated;
+    });
 
     if (isDbConnected && supabase) {
-      const { error } = await supabase.from('events').update(updates).eq('id', id);
+      const { error } = await supabase.from('events').update(toEventDbPayload(sanitized)).eq('id', id);
       if (error) {
         console.error('Error actualizando evento en Supabase:', error);
+        throw error;
       }
-    } else {
-      const updatedEvents = events.map(e => e.id === id ? { ...e, ...updates } : e);
-      localStorage.setItem('ar_columnist_events', JSON.stringify(updatedEvents));
     }
   };
 

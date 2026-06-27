@@ -8,6 +8,7 @@ const API_ROUTES: Record<string, string> = {
   '/api/commodities': './api/commodities.ts',
   '/api/auth-login': './api/auth-login.ts',
   '/api/auth-verify': './api/auth-verify.ts',
+  '/api/transcribe': './api/transcribe.ts',
 };
 
 // https://vite.dev/config/

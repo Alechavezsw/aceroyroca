@@ -26,6 +26,7 @@ import { getNoteVersions, saveNoteVersion } from '../hooks/useNoteVersions';
 import { downloadWordDoc, copyCmsHtml, copyToClipboard } from '../utils/exportUtils';
 import { SyncIndicator } from './SyncIndicator';
 import { EditorChecklist } from './EditorChecklist';
+import { VoiceRecorder } from './VoiceRecorder';
 import { buildColumnChecklist, glossaryTermsInContent } from '../utils/columnChecklist';
 import type { GlossaryTerm } from '../context/AppContext';
 
@@ -117,6 +118,24 @@ export const Editor: React.FC = () => {
     if (activeNote) {
       updateNote(activeNote.id, { content: e.target.value });
     }
+  };
+
+  const appendTranscription = (text: string) => {
+    if (!activeNote || !textareaRef.current) return;
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const current = activeNote.content;
+    const needsBreak = start > 0 && current[start - 1] !== '\n';
+    const prefix = start === 0 ? '' : needsBreak ? '\n\n' : '';
+    const insert = `${prefix}${text}`;
+    const newText = current.slice(0, start) + insert + current.slice(end);
+    updateNote(activeNote.id, { content: newText });
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const pos = start + insert.length;
+      textarea.setSelectionRange(pos, pos);
+    });
   };
 
   const handleStatusChange = (status: Note['status']) => {
@@ -432,6 +451,12 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
                     <button onClick={() => insertFormatting('- ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Lista"><List size={14} /></button>
                     <div className="w-px h-4 bg-border-color mx-1"></div>
                     <button onClick={() => insertFormatting('[', '](url)')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Enlace"><LinkIcon size={14} /></button>
+                  </div>
+                  <div className="editor-voice-bar no-print">
+                    <VoiceRecorder
+                      label="Dictado por voz (se inserta en el cursor)"
+                      onTranscription={appendTranscription}
+                    />
                   </div>
                   <textarea
                     ref={textareaRef}

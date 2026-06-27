@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS events (
   start_date TIMESTAMPTZ NOT NULL,
   end_date TIMESTAMPTZ NOT NULL,
   type TEXT DEFAULT 'event' CHECK (type IN ('delivery', 'interview', 'meeting', 'event')),
+  note_id UUID REFERENCES notes(id) ON DELETE SET NULL,
+  task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
