@@ -16,7 +16,9 @@ import {
   fetchBriefingHistory,
   saveBriefingHistoryRemote,
   fetchUserConfigFromDb,
-  saveUserConfigToDb
+  saveUserConfigToDb,
+  fetchPaymentEntries,
+  savePaymentEntriesRemote
 } from '../utils/editorialSync';
 import {
   buildBriefingPrompt,
@@ -30,6 +32,14 @@ import {
   hasBriefingToday
 } from '../utils/briefingService';
 import { loadWatchlist, saveWatchlist, getWatchlistProjectNames } from '../utils/projectWatchlist';
+import {
+  loadPaymentEntries,
+  savePaymentEntries,
+  createPaymentEntry,
+  getWeekKey,
+  type PaymentEntry,
+  type ProposalType
+} from '../utils/paymentTracker';
 
 // Interfaces
 export interface Note {
@@ -152,6 +162,21 @@ interface AppContextType {
   setAutoBriefingOpen: (open: boolean) => void;
 
   syncStatus: SyncStatus;
+
+  paymentEntries: PaymentEntry[];
+  addPaymentEntry: (data: {
+    title: string;
+    noteId?: string | null;
+    proposalType?: ProposalType;
+    approved?: boolean;
+    published?: boolean;
+  }) => void;
+  updatePaymentEntry: (id: string, updates: Partial<PaymentEntry>) => void;
+  deletePaymentEntry: (id: string) => void;
+  markWeekPaid: (weekKey: string) => void;
+  getCurrentWeekKey: () => string;
+  getPaymentEntryForNote: (noteId: string) => PaymentEntry | undefined;
+  toggleNotePublished: (noteId: string, published: boolean) => void;
 
   loading: boolean;
   isDbConnected: boolean;
@@ -284,6 +309,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [watchlist, setWatchlist] = useState<string[]>(loadWatchlist());
   const [briefingHistory, setBriefingHistory] = useState<BriefingEntry[]>(loadBriefingHistory());
+  const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>(loadPaymentEntries());
   const [autoBriefingOpen, setAutoBriefingOpen] = useState(false);
   const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoBriefingRan = React.useRef(false);
@@ -329,6 +355,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       let mergedWatchlist = loadWatchlist();
       let mergedBriefingHistory = loadBriefingHistory();
+      let mergedPayments = loadPaymentEntries();
 
       const savedCourse = localStorage.getItem('ar_course_progress');
       if (savedCourse) {
@@ -350,7 +377,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // 2. Cargar Datos
       if (isSupabaseConfigured && supabase) {
         try {
-          const [notesRes, tasksRes, eventsRes, remoteGlossary, remoteCourses, remoteProgress, remoteWatchlist, remoteBriefings] = await Promise.all([
+          const [notesRes, tasksRes, eventsRes, remoteGlossary, remoteCourses, remoteProgress, remoteWatchlist, remoteBriefings, remotePayments] = await Promise.all([
             supabase.from('notes').select('*').order('updated_at', { ascending: false }),
             supabase.from('tasks').select('*').order('created_at', { ascending: true }),
             supabase.from('events').select('*').order('start_date', { ascending: true }),
@@ -358,7 +385,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             fetchCustomCourses(),
             fetchCourseProgress(),
             fetchWatchlist(),
-            fetchBriefingHistory()
+            fetchBriefingHistory(),
+            fetchPaymentEntries()
           ]);
 
           if (notesRes.error) throw notesRes.error;
@@ -392,11 +420,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             saveBriefingHistory(mergedBriefingHistory);
           }
 
+          if (remotePayments?.length) {
+            mergedPayments = remotePayments;
+            savePaymentEntries(mergedPayments);
+          } else if (mergedPayments.length) {
+            savePaymentEntriesRemote(mergedPayments).catch(console.warn);
+          }
+
           setGlossary(mergedGlossary);
           setCourses(mergedCourses);
           setCourseProgress(mergedProgress);
           setWatchlist(mergedWatchlist);
           setBriefingHistory(mergedBriefingHistory);
+          setPaymentEntries(mergedPayments);
 
           setNotes(notesRes.data || []);
           setTasks(tasksRes.data || []);
@@ -413,6 +449,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setCourseProgress(mergedProgress);
           setWatchlist(mergedWatchlist);
           setBriefingHistory(mergedBriefingHistory);
+          setPaymentEntries(mergedPayments);
           setIsDbConnected(false);
           loadFromLocalStorage();
         }
@@ -422,6 +459,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCourseProgress(mergedProgress);
         setWatchlist(mergedWatchlist);
         setBriefingHistory(mergedBriefingHistory);
+        setPaymentEntries(mergedPayments);
         loadFromLocalStorage();
       }
       setLoading(false);
@@ -912,6 +950,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const persistPaymentEntries = (entries: PaymentEntry[]) => {
+    savePaymentEntries(entries);
+    savePaymentEntriesRemote(entries).catch(console.warn);
+  };
+
+  const addPaymentEntry = (data: {
+    title: string;
+    noteId?: string | null;
+    proposalType?: ProposalType;
+    approved?: boolean;
+    published?: boolean;
+  }) => {
+    setPaymentEntries(prev => {
+      const entry = createPaymentEntry(prev, data);
+      const updated = [...prev, entry];
+      persistPaymentEntries(updated);
+      return updated;
+    });
+  };
+
+  const updatePaymentEntry = (id: string, updates: Partial<PaymentEntry>) => {
+    setPaymentEntries(prev => {
+      const updated = prev.map(e => (e.id === id ? { ...e, ...updates } : e));
+      persistPaymentEntries(updated);
+      return updated;
+    });
+  };
+
+  const deletePaymentEntry = (id: string) => {
+    setPaymentEntries(prev => {
+      const updated = prev.filter(e => e.id !== id);
+      persistPaymentEntries(updated);
+      return updated;
+    });
+  };
+
+  const markWeekPaid = (weekKey: string) => {
+    const now = new Date().toISOString();
+    setPaymentEntries(prev => {
+      const updated = prev.map(e =>
+        e.weekKey === weekKey && e.approved && !e.paid
+          ? { ...e, paid: true, paidAt: now }
+          : e
+      );
+      persistPaymentEntries(updated);
+      return updated;
+    });
+  };
+
+  const getCurrentWeekKey = () => getWeekKey();
+
+  const getPaymentEntryForNote = (noteId: string) =>
+    paymentEntries.find(e => e.noteId === noteId && !e.paid);
+
+  const toggleNotePublished = (noteId: string, published: boolean) => {
+    const entry = paymentEntries.find(e => e.noteId === noteId);
+    if (entry) {
+      updatePaymentEntry(entry.id, { published });
+    } else if (published) {
+      const note = notes.find(n => n.id === noteId);
+      if (note) {
+        addPaymentEntry({
+          title: note.title,
+          noteId,
+          approved: true,
+          published: true
+        });
+      }
+    }
+    if (published) {
+      updateNote(noteId, { status: 'published' }).catch(console.warn);
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       activeSection,
@@ -954,6 +1066,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       autoBriefingOpen,
       setAutoBriefingOpen,
       syncStatus,
+      paymentEntries,
+      addPaymentEntry,
+      updatePaymentEntry,
+      deletePaymentEntry,
+      markWeekPaid,
+      getCurrentWeekKey,
+      getPaymentEntryForNote,
+      toggleNotePublished,
       loading,
       isDbConnected
     }}>

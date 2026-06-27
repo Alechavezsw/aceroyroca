@@ -38,7 +38,9 @@ export const Editor: React.FC = () => {
     updateNote, 
     deleteNote, 
     config,
-    glossary
+    glossary,
+    toggleNotePublished,
+    paymentEntries
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
@@ -63,6 +65,12 @@ export const Editor: React.FC = () => {
     : [];
 
   const detectedTerms = activeNote ? glossaryTermsInContent(activeNote.content, glossary) : [];
+
+  const linkedPayment = activeNote
+    ? paymentEntries.find(e => e.noteId === activeNote.id)
+    : undefined;
+  const isPublished =
+    linkedPayment?.published ?? activeNote?.status === 'published';
 
   useEffect(() => {
     if (activeNoteId) setVersions(getNoteVersions(activeNoteId));
@@ -463,6 +471,15 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
               items={checklistItems}
               detectedTerms={detectedTerms}
               onTermClick={setGlossaryPreview}
+              noteNumber={linkedPayment?.number}
+              publishedItem={
+                activeNote
+                  ? {
+                      done: isPublished,
+                      onToggle: () => toggleNotePublished(activeNote.id, !isPublished)
+                    }
+                  : undefined
+              }
             />
             </div>
           ) : (

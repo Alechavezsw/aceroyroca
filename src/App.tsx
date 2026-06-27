@@ -13,6 +13,7 @@ import { MiningCourse } from './components/MiningCourse';
 import { ProjectsPanel } from './components/ProjectsPanel';
 import { GlossaryPanel } from './components/GlossaryPanel';
 import { CommandSearch } from './components/CommandSearch';
+import { PaymentPanel } from './components/PaymentPanel';
 import { BriefingModal } from './components/MorningBriefing';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
@@ -48,6 +49,8 @@ const MainAppContent: React.FC = () => {
         return <KanbanBoard />;
       case 'calendar':
         return <CalendarView />;
+      case 'payments':
+        return <PaymentPanel />;
       case 'settings':
         return <Settings />;
       default:

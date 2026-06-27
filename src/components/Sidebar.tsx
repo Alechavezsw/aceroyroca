@@ -13,7 +13,8 @@ import {
   GraduationCap,
   MapPin,
   BookMarked,
-  LogOut
+  LogOut,
+  Wallet
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { SyncIndicator } from './SyncIndicator';
@@ -32,6 +33,7 @@ export const Sidebar: React.FC = () => {
     { id: 'projects', label: 'Mapa Proyectos', icon: MapPin },
     { id: 'glossary', label: 'Glosario', icon: BookMarked },
     { id: 'tasks', label: 'Tablero Kanban', icon: KanbanSquare },
+    { id: 'payments', label: 'Pagos', icon: Wallet },
     { id: 'calendar', label: 'Agenda', icon: Calendar },
     { id: 'settings', label: 'Ajustes', icon: Settings },
   ];

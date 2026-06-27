@@ -6,7 +6,8 @@ const STORE_KEYS = {
   CUSTOM_COURSES: 'custom_courses',
   COURSE_PROGRESS: 'course_progress',
   WATCHLIST: 'watchlist',
-  BRIEFING_HISTORY: 'briefing_history'
+  BRIEFING_HISTORY: 'briefing_history',
+  PAYMENT_ENTRIES: 'payment_entries'
 } as const;
 
 export { STORE_KEYS };
@@ -137,6 +138,14 @@ export async function fetchBriefingHistory(): Promise<import('./briefingService'
 
 export async function saveBriefingHistoryRemote(history: import('./briefingService').BriefingEntry[]): Promise<void> {
   await saveEditorialStore(STORE_KEYS.BRIEFING_HISTORY, history.slice(0, 30));
+}
+
+export async function fetchPaymentEntries(): Promise<import('./paymentTracker').PaymentEntry[] | null> {
+  return fetchEditorialStore<import('./paymentTracker').PaymentEntry[]>(STORE_KEYS.PAYMENT_ENTRIES);
+}
+
+export async function savePaymentEntriesRemote(entries: import('./paymentTracker').PaymentEntry[]): Promise<void> {
+  await saveEditorialStore(STORE_KEYS.PAYMENT_ENTRIES, entries);
 }
 
 export function mergeGlossary(local: GlossaryTerm[], remote: GlossaryTerm[]): GlossaryTerm[] {

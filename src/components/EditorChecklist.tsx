@@ -7,29 +7,50 @@ interface EditorChecklistProps {
   items: ChecklistItem[];
   detectedTerms: GlossaryTerm[];
   onTermClick?: (term: GlossaryTerm) => void;
+  publishedItem?: { done: boolean; onToggle: () => void };
+  noteNumber?: number;
 }
 
 export const EditorChecklist: React.FC<EditorChecklistProps> = ({
   items,
   detectedTerms,
-  onTermClick
+  onTermClick,
+  publishedItem,
+  noteNumber
 }) => {
-  const doneCount = items.filter(i => i.done).length;
-  const pct = Math.round((doneCount / items.length) * 100);
+  const allItems = publishedItem
+    ? [...items, { id: 'published', label: 'Publicada', hint: 'Salió en el diario', done: publishedItem.done, toggle: publishedItem.onToggle }]
+    : items.map(i => ({ ...i, toggle: undefined as (() => void) | undefined }));
+
+  const doneCount = allItems.filter(i => i.done).length;
+  const pct = Math.round((doneCount / allItems.length) * 100);
 
   return (
     <aside className="editor-checklist no-print">
       <div className="editor-checklist__header">
-        <h3 className="editor-checklist__title">Checklist columna</h3>
+        <h3 className="editor-checklist__title">
+          Checklist columna
+          {noteNumber != null && (
+            <span className="editor-checklist__note-num">#{noteNumber}</span>
+          )}
+        </h3>
         <span className="editor-checklist__pct">{pct}%</span>
       </div>
       <div className="editor-checklist__bar">
         <div className="editor-checklist__bar-fill" style={{ width: `${pct}%` }} />
       </div>
       <ul className="editor-checklist__list">
-        {items.map(item => (
+        {allItems.map(item => (
           <li key={item.id} className={`editor-checklist__item ${item.done ? 'is-done' : ''}`}>
-            {item.done ? (
+            {'toggle' in item && item.toggle ? (
+              <button type="button" className="editor-checklist__toggle" onClick={item.toggle}>
+                {item.done ? (
+                  <CheckCircle size={15} className="text-accent-emerald shrink-0" />
+                ) : (
+                  <Circle size={15} className="text-text-muted shrink-0" />
+                )}
+              </button>
+            ) : item.done ? (
               <CheckCircle size={15} className="text-accent-emerald shrink-0" />
             ) : (
               <Circle size={15} className="text-text-muted shrink-0" />
