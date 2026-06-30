@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Search, FileText, CheckSquare, Calendar, GraduationCap, MapPin } from 'lucide-react';
+import { Search, FileText, CheckSquare, Calendar, GraduationCap, MapPin, ImageIcon } from 'lucide-react';
 
 export const CommandSearch: React.FC = () => {
   const { notes, tasks, events, setActiveSection, setActiveNoteId } = useApp();
@@ -31,6 +31,7 @@ export const CommandSearch: React.FC = () => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Search },
     { id: 'editor', label: 'Redacción', icon: FileText },
+    { id: 'wordpress-images', label: 'Fotos WordPress', icon: ImageIcon },
     { id: 'agent', label: 'Agente IA', icon: Search },
     { id: 'course', label: 'Curso de Minería', icon: GraduationCap },
     { id: 'projects', label: 'Mapa de Proyectos', icon: MapPin },

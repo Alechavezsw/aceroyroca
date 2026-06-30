@@ -20,7 +20,7 @@ export const GeminiAgent: React.FC = () => {
 Puedo ayudarte con:
 * **Proyectos locales** — Los Azules, Josemaría, Veladero, litio en salares
 * **Tecnicismos** — lixiviación, flotación, ley de corte, RIGI
-* **Redacción editorial** — estructura de columnas y reportajes técnicos
+* **Redacción editorial** — estructura oficial: copete, Lo esencial en 10 segundos, H2/H3, imágenes y WordPress
 * **Análisis de noticias** del sector minero argentino e internacional`;
 
   useEffect(() => {

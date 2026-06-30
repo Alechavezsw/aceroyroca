@@ -127,7 +127,7 @@ export const Settings: React.FC = () => {
         <div className="glass-panel p-5 flex flex-col gap-4">
           <div className="flex items-center gap-2 border-b border-white/5 pb-2">
             <Target size={18} className="text-accent-steel" />
-            <h3 className="text-sm font-bold uppercase tracking-wider text-white">Meta de Palabras</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white">Meta de palabras (nota informativa)</h3>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
@@ -135,11 +135,11 @@ export const Settings: React.FC = () => {
               <input type="number" min={100} value={wordGoalMin} onChange={e => setWordGoalMin(Number(e.target.value))} className="glass-input" />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-text-secondary">Máximo (columna dominical)</label>
+              <label className="text-xs font-semibold text-text-secondary">Máximo</label>
               <input type="number" min={500} value={wordGoalMax} onChange={e => setWordGoalMax(Number(e.target.value))} className="glass-input" />
             </div>
           </div>
-          <span className="text-[10px] text-text-muted">La barra de progreso en el Editor usa estos valores como referencia.</span>
+          <span className="text-[10px] text-text-muted">Guía editorial: informativa 700–1000 · investigación 1000–1500. El checklist del Editor valida la estructura oficial.</span>
         </div>
 
         {/* Sección: Fuentes RSS */}

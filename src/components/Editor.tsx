@@ -21,7 +21,7 @@ import {
   List,
   Link as LinkIcon
 } from 'lucide-react';
-import { COLUMN_TEMPLATES } from '../data/columnTemplates';
+import { getColumnTemplates, buildInformativeNoteTemplate } from '../data/editorialGuide';
 import { getNoteVersions, saveNoteVersion } from '../hooks/useNoteVersions';
 import { downloadWordDoc, copyCmsHtml, copyToClipboard } from '../utils/exportUtils';
 import { SyncIndicator } from './SyncIndicator';
@@ -102,7 +102,7 @@ export const Editor: React.FC = () => {
   // Auto-crear una nota si no hay ninguna
   useEffect(() => {
     if (notes.length === 0) {
-      createNote('Nueva Columna', '# Nueva Columna\n\nComienza a redactar aquí...');
+      createNote('Nueva nota', buildInformativeNoteTemplate());
     } else if (!activeNoteId) {
       setActiveNoteId(notes[0].id);
     }
@@ -416,7 +416,7 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
 
               {showTemplates && (
                 <div className="glass-panel p-4 grid grid-cols-1 md:grid-cols-2 gap-2 no-print">
-                  {COLUMN_TEMPLATES.map(t => (
+                  {getColumnTemplates(config.authorName).map(t => (
                     <button key={t.id} type="button" onClick={() => applyTemplate(t.content, t.name)} className="list-row text-left flex-col items-start !transform-none">
                       <span className="font-semibold text-white text-sm">{t.name}</span>
                       <span className="text-xs text-text-muted">{t.description}</span>
@@ -447,7 +447,7 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
                     <button onClick={() => insertFormatting('# ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Título 1"><Heading1 size={14} /></button>
                     <button onClick={() => insertFormatting('## ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Título 2"><Heading2 size={14} /></button>
                     <div className="w-px h-4 bg-border-color mx-1"></div>
-                    <button onClick={() => insertFormatting('> ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Cita"><Quote size={14} /></button>
+                    <button onClick={() => insertFormatting('### Recuadro sugerido\n\n**', '**')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Recuadro editorial"><Quote size={14} /></button>
                     <button onClick={() => insertFormatting('- ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Lista"><List size={14} /></button>
                     <div className="w-px h-4 bg-border-color mx-1"></div>
                     <button onClick={() => insertFormatting('[', '](url)')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Enlace"><LinkIcon size={14} /></button>
@@ -462,7 +462,7 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
                     ref={textareaRef}
                     value={activeNote.content}
                     onChange={handleContentChange}
-                    placeholder="Comienza a redactar tu columna en Markdown..."
+                    placeholder="Estructura Acero y Roca: título, copete, Lo esencial en 10 segundos, H2/H3, imágenes y entrada WordPress…"
                     className="editor-text-area border-0 rounded-none bg-transparent focus:bg-transparent focus:shadow-none no-print w-full flex-1 p-4 outline-none resize-none"
                   />
                 </div>

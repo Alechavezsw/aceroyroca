@@ -279,8 +279,8 @@ const DEFAULT_CONFIG: AppConfig = {
     'https://news.google.com/rss/search?q=mineria+argentina+OR+cobre+san+juan&hl=es-419&gl=AR&ceid=AR:es-419',
     'https://www.mining.com/feed/'
   ],
-  wordGoalMin: 900,
-  wordGoalMax: 1200,
+  wordGoalMin: 700,
+  wordGoalMax: 1000,
   autoBriefing: true
 };
 

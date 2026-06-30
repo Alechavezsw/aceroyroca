@@ -14,11 +14,13 @@ import {
   MapPin,
   BookMarked,
   LogOut,
-  Wallet
+  Wallet,
+  ImageIcon
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { SyncIndicator } from './SyncIndicator';
 import { useAuth } from '../context/AuthContext';
+import { buildInformativeNoteTemplate } from '../data/editorialGuide';
 
 export const Sidebar: React.FC = () => {
   const { activeSection, setActiveSection, createNote, isDbConnected } = useApp();
@@ -28,6 +30,7 @@ export const Sidebar: React.FC = () => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'editor', label: 'Redacción', icon: FileText },
+    { id: 'wordpress-images', label: 'Fotos WP', icon: ImageIcon },
     { id: 'agent', label: 'Agente IA', icon: Cpu },
     { id: 'course', label: 'Curso de Minería', icon: GraduationCap },
     { id: 'projects', label: 'Mapa Proyectos', icon: MapPin },
@@ -39,8 +42,8 @@ export const Sidebar: React.FC = () => {
   ];
 
   const handleQuickNote = async () => {
-    const title = `Nueva Columna - ${new Date().toLocaleDateString('es-AR')}`;
-    await createNote(title, '# ' + title + '\n\nEscribe tu contenido aquí...');
+    const title = `Nueva nota - ${new Date().toLocaleDateString('es-AR')}`;
+    await createNote(title, buildInformativeNoteTemplate());
     setActiveSection('editor');
     setIsOpen(false);
   };
