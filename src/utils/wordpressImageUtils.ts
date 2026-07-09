@@ -243,7 +243,7 @@ export async function downloadWordPressZip(outputs: WordPressImageOutput[]): Pro
   const readme = [
     'Imágenes optimizadas para WordPress — Acero & Roca',
     '',
-    '1. En WordPress: Medios → Añadir nuevo → subí el archivo principal (.acero-y-roca.webp).',
+    '1. En WordPress: Medios → Añadir nuevo → subí el archivo principal (.aceroyroca.webp).',
     '2. WordPress generará sus propios tamaños; estos archivos son respaldo/editorial.',
     '3. Copiá el HTML desde el portal y reemplazá la URL si WordPress asigna otra ruta.',
     '4. Pegá en el editor de bloques (modo código) o en HTML personalizado.',

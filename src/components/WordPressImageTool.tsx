@@ -139,7 +139,7 @@ export const WordPressImageTool: React.FC = () => {
             Fotos para <span className="dashboard-hero__title-accent">WordPress</span>
           </h2>
           <p className="dashboard-hero__subtitle">
-            Convertí fotos del celular o cámara a JPG optimizado, tamaños WP y HTML listo para aceroyroca.com.
+            Convertí fotos a WebP optimizado (.aceroyroca.webp), tamaños WP y HTML listo para aceroyroca.com.
           </p>
         </div>
       </header>

@@ -452,7 +452,7 @@ Responde a la siguiente solicitud de manera directa, corta y aplicable para el e
                     <button onClick={() => insertFormatting('# ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Título 1"><Heading1 size={14} /></button>
                     <button onClick={() => insertFormatting('## ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Título 2"><Heading2 size={14} /></button>
                     <div className="w-px h-4 bg-border-color mx-1"></div>
-                    <button onClick={() => insertFormatting('### Recuadro sugerido\n\n**', '**')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Recuadro editorial"><Quote size={14} /></button>
+                    <button onClick={() => insertFormatting('*"', '"*, afirma.')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Cita textual"><Quote size={14} /></button>
                     <button onClick={() => insertFormatting('- ', '')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Lista"><List size={14} /></button>
                     <div className="w-px h-4 bg-border-color mx-1"></div>
                     <button onClick={() => insertFormatting('[', '](url)')} className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-white transition-colors" title="Enlace"><LinkIcon size={14} /></button>
