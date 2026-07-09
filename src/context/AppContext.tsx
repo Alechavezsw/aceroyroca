@@ -364,19 +364,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const savedCourse = localStorage.getItem('ar_course_progress');
       if (savedCourse) {
-        const parsed = safeJSON<Record<string, unknown>>(savedCourse, null);
-        if (parsed?.progressByCourse) mergedProgress = parsed as unknown as CourseProgress;
-        else if (parsed.completedModules) {
+        const parsed = safeJSON<Record<string, unknown> | null>(savedCourse, null);
+        if (parsed?.progressByCourse) {
+          mergedProgress = parsed as unknown as CourseProgress;
+        } else if (parsed && Array.isArray(parsed.completedModules)) {
+          const completedModules = parsed.completedModules.filter(
+            (m): m is string => typeof m === 'string'
+          );
           mergedProgress = {
             activeCourseId: BUILT_IN_COURSE_ID,
-            progressByCourse: { [BUILT_IN_COURSE_ID]: parsed.completedModules }
+            progressByCourse: { [BUILT_IN_COURSE_ID]: completedModules }
           };
         }
       }
 
       const savedCourses = localStorage.getItem('ar_custom_courses');
       if (savedCourses) {
-        const parsed = safeJSON(savedCourses, []);
+        const parsed = safeJSON<Course[]>(savedCourses, []);
         mergedCourses = [BUILT_IN_COURSE, ...parsed];
       }
 
@@ -807,7 +811,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const prevSnapshot = notes.find(n => n.id === id);
     setSyncStatus('saving');
 
-    let saveError = false;
     setNotes(prev => {
       const updated = prev.map(n => n.id === id ? { ...n, ...updatedFields } : n);
       localStorage.setItem('ar_columnist_notes', JSON.stringify(updated));
@@ -818,7 +821,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { error } = await supabase.from('notes').update(updatedFields).eq('id', id);
       if (error) {
         console.error('Error actualizando nota en Supabase:', error);
-        saveError = true;
         if (prevSnapshot) {
           setNotes(prev => prev.map(n => n.id === id ? prevSnapshot : n));
         }
