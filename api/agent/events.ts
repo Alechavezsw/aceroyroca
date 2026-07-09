@@ -24,7 +24,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (req.method === 'POST') {
-      const { title, description, start_date, end_date, type } = req.body;
+      const { title, description, start_date, end_date, type, note_id, task_id } = req.body;
       if (!title || !start_date || !end_date) {
         return res.status(400).json({ error: 'Missing required fields: title, start_date, end_date' });
       }
@@ -36,7 +36,9 @@ export default async function handler(req: any, res: any) {
           description: description || '', 
           start_date,
           end_date,
-          type: type || 'event'
+          type: type || 'event',
+          note_id: note_id || null,
+          task_id: task_id || null
         }])
         .select()
         .single();
@@ -46,7 +48,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (req.method === 'PUT') {
-      const { id, title, description, start_date, end_date, type } = req.body;
+      const { id, title, description, start_date, end_date, type, note_id, task_id } = req.body;
       if (!id) return res.status(400).json({ error: 'Missing event id' });
 
       const updates: any = {};
@@ -55,6 +57,8 @@ export default async function handler(req: any, res: any) {
       if (start_date !== undefined) updates.start_date = start_date;
       if (end_date !== undefined) updates.end_date = end_date;
       if (type !== undefined) updates.type = type;
+      if (note_id !== undefined) updates.note_id = note_id;
+      if (task_id !== undefined) updates.task_id = task_id;
 
       const { data, error } = await supabase
         .from('events')

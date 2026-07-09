@@ -112,8 +112,10 @@ export const CalendarView: React.FC = () => {
     setSelectedDateStr(event.start_date.split('T')[0]);
     setFormTitle(event.title);
     setFormDesc(event.description);
-    setFormTime(event.start_date.split('T')[1].substring(0, 5));
-    setFormEndTime(event.end_date.split('T')[1].substring(0, 5));
+    const startTime = event.start_date.includes('T') ? event.start_date.split('T')[1]?.substring(0, 5) : '12:00';
+    const endTime = event.end_date.includes('T') ? event.end_date.split('T')[1]?.substring(0, 5) : '13:00';
+    setFormTime(startTime);
+    setFormEndTime(endTime);
     setFormType(event.type);
     setFormNoteId(event.note_id || '');
     setFormTaskId(event.task_id || '');

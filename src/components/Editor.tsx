@@ -75,16 +75,20 @@ export const Editor: React.FC = () => {
 
   useEffect(() => {
     if (activeNoteId) setVersions(getNoteVersions(activeNoteId));
-  }, [activeNoteId, activeNote?.updated_at]);
+  }, [activeNoteId]);
+
+  const activeNoteRef = useRef(activeNote);
+  activeNoteRef.current = activeNote;
 
   useEffect(() => {
     const onSave = () => {
-      if (activeNote) saveNoteVersion(activeNote.id, activeNote.title, activeNote.content);
-      setVersions(getNoteVersions(activeNote?.id || ''));
+      const note = activeNoteRef.current;
+      if (note) saveNoteVersion(note.id, note.title, note.content);
+      setVersions(getNoteVersions(note?.id || ''));
     };
     window.addEventListener('ar:save-note', onSave);
     return () => window.removeEventListener('ar:save-note', onSave);
-  }, [activeNote]);
+  }, []);
 
   const applyTemplate = async (content: string, title: string) => {
     const body = content.replace(/\{\{author\}\}/g, config.authorName);
@@ -147,6 +151,7 @@ export const Editor: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('¿Estás seguro de que deseas eliminar este borrador?')) {
       await deleteNote(id);
+      if (activeNoteId === id) setActiveNoteId(null);
     }
   };
 

@@ -9,9 +9,9 @@ export default function handler(req: any, res: any) {
   const openapiSpec = {
     openapi: "3.0.0",
     info: {
-      title: "Acero y Rock Agent API",
+      title: "Acero & Roca Agent API",
       version: "1.0.0",
-      description: "API for OpenClaw to manage Notes, Tasks, and Events in Acero y Rock application."
+      description: "API para que el agente IA gestione notas, tareas y eventos en Acero & Roca."
     },
     servers: [
       {

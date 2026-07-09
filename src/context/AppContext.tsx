@@ -291,6 +291,11 @@ const DEFAULT_GLOSSARY: GlossaryTerm[] = [
   { id: 'g4', term: 'Lixiviación', definition: 'Proceso químico que disuelve el metal del mineral usando soluciones en pilas o montones.', category: 'Procesos', example: 'Los Azules evalúa lixiviación en pilas para reducir costos operativos.', source: 'Curso Etapa 4', addedAt: new Date().toISOString() }
 ];
 
+const safeJSON = <T,>(value: string | null, fallback: T): T => {
+  if (!value) return fallback;
+  try { return JSON.parse(value); } catch { return fallback; }
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [notes, setNotes] = useState<Note[]>([]);
@@ -321,7 +326,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       let mergedConfig: AppConfig = { ...DEFAULT_CONFIG };
       const savedConfig = localStorage.getItem('ar_columnist_config');
       if (savedConfig) {
-        mergedConfig = { ...mergedConfig, ...JSON.parse(savedConfig) };
+        mergedConfig = { ...mergedConfig, ...safeJSON(savedConfig, {}) };
       }
 
       if (isSupabaseConfigured && supabase) {
@@ -344,7 +349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       document.documentElement.setAttribute('data-theme', mergedConfig.theme || 'dark');
 
       const savedGlossary = localStorage.getItem('ar_glossary');
-      const localGlossary: GlossaryTerm[] = savedGlossary ? JSON.parse(savedGlossary) : DEFAULT_GLOSSARY;
+      const localGlossary: GlossaryTerm[] = savedGlossary ? safeJSON(savedGlossary, DEFAULT_GLOSSARY) : DEFAULT_GLOSSARY;
       if (!savedGlossary) localStorage.setItem('ar_glossary', JSON.stringify(DEFAULT_GLOSSARY));
 
       let mergedGlossary = localGlossary;
@@ -359,8 +364,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const savedCourse = localStorage.getItem('ar_course_progress');
       if (savedCourse) {
-        const parsed = JSON.parse(savedCourse);
-        if (parsed.progressByCourse) mergedProgress = parsed;
+        const parsed = safeJSON<Record<string, unknown>>(savedCourse, null);
+        if (parsed?.progressByCourse) mergedProgress = parsed as unknown as CourseProgress;
         else if (parsed.completedModules) {
           mergedProgress = {
             activeCourseId: BUILT_IN_COURSE_ID,
@@ -371,27 +376,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const savedCourses = localStorage.getItem('ar_custom_courses');
       if (savedCourses) {
-        mergedCourses = [BUILT_IN_COURSE, ...JSON.parse(savedCourses)];
+        const parsed = safeJSON(savedCourses, []);
+        mergedCourses = [BUILT_IN_COURSE, ...parsed];
       }
 
       // 2. Cargar Datos
       if (isSupabaseConfigured && supabase) {
         try {
-          const [notesRes, tasksRes, eventsRes, remoteGlossary, remoteCourses, remoteProgress, remoteWatchlist, remoteBriefings, remotePayments] = await Promise.all([
+          const [notesRes, tasksRes, eventsRes] = await Promise.all([
             supabase.from('notes').select('*').order('updated_at', { ascending: false }),
             supabase.from('tasks').select('*').order('created_at', { ascending: true }),
-            supabase.from('events').select('*').order('start_date', { ascending: true }),
-            fetchGlossaryFromDb(),
-            fetchCustomCourses(),
-            fetchCourseProgress(),
-            fetchWatchlist(),
-            fetchBriefingHistory(),
-            fetchPaymentEntries()
+            supabase.from('events').select('*').order('start_date', { ascending: true })
           ]);
 
           if (notesRes.error) throw notesRes.error;
           if (tasksRes.error) throw tasksRes.error;
           if (eventsRes.error) throw eventsRes.error;
+
+          const [remoteGlossary, remoteCourses, remoteProgress, remoteWatchlist, remoteBriefings, remotePayments] = await Promise.all([
+            fetchGlossaryFromDb().catch(() => []),
+            fetchCustomCourses().catch(() => []),
+            fetchCourseProgress().catch(() => null),
+            fetchWatchlist().catch(() => []),
+            fetchBriefingHistory().catch(() => []),
+            fetchPaymentEntries().catch(() => [])
+          ]);
 
           if (remoteGlossary.length) {
             mergedGlossary = mergeGlossary(localGlossary, remoteGlossary);
@@ -512,8 +521,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Briefing automático al iniciar (una vez por día)
   useEffect(() => {
     if (loading || autoBriefingRan.current) return;
-    const cfg = config;
-    if (!cfg.autoBriefing) return;
+    if (!config.autoBriefing) return;
 
     const today = getTodayKey();
     if (getLastAutoBriefingDate() === today || hasBriefingToday(briefingHistory)) return;
@@ -522,16 +530,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     runBriefing({ silent: true }).then(entry => {
       if (entry) setAutoBriefingOpen(true);
     });
-  }, [loading, config.autoBriefing]);
+  }, [loading, config.autoBriefing, briefingHistory]);
 
   const loadFromLocalStorage = () => {
     const savedNotes = localStorage.getItem('ar_columnist_notes');
     const savedTasks = localStorage.getItem('ar_columnist_tasks');
     const savedEvents = localStorage.getItem('ar_columnist_events');
 
-    const loadedNotes = savedNotes ? JSON.parse(savedNotes) : DEFAULT_NOTES;
-    const loadedTasks = savedTasks ? JSON.parse(savedTasks) : DEFAULT_TASKS;
-    const loadedEvents = savedEvents ? JSON.parse(savedEvents) : DEFAULT_EVENTS;
+    const loadedNotes = savedNotes ? safeJSON(savedNotes, DEFAULT_NOTES) : DEFAULT_NOTES;
+    const loadedTasks = savedTasks ? safeJSON(savedTasks, DEFAULT_TASKS) : DEFAULT_TASKS;
+    const loadedEvents = savedEvents ? safeJSON(savedEvents, DEFAULT_EVENTS) : DEFAULT_EVENTS;
 
     setNotes(loadedNotes);
     setTasks(loadedTasks);
@@ -770,12 +778,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ...newNote,
         id: 'note_' + Math.random().toString(36).substr(2, 9)
       };
-      const updatedNotes = [created, ...notes];
-      setNotes(updatedNotes);
-      localStorage.setItem('ar_columnist_notes', JSON.stringify(updatedNotes));
     }
 
-    setNotes(prev => [created, ...prev]);
+    setNotes(prev => {
+      const updated = [created, ...prev];
+      if (!isDbConnected) localStorage.setItem('ar_columnist_notes', JSON.stringify(updated));
+      return updated;
+    });
     setActiveNoteId(created.id);
     return created;
   };
@@ -795,20 +804,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedFields.words_count = updates.content.split(/\s+/).filter(Boolean).length;
     }
 
+    const prevSnapshot = notes.find(n => n.id === id);
     setSyncStatus('saving');
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...updatedFields } : n));
+
+    let saveError = false;
+    setNotes(prev => {
+      const updated = prev.map(n => n.id === id ? { ...n, ...updatedFields } : n);
+      localStorage.setItem('ar_columnist_notes', JSON.stringify(updated));
+      return updated;
+    });
 
     if (isDbConnected && supabase) {
       const { error } = await supabase.from('notes').update(updatedFields).eq('id', id);
       if (error) {
         console.error('Error actualizando nota en Supabase:', error);
+        saveError = true;
+        if (prevSnapshot) {
+          setNotes(prev => prev.map(n => n.id === id ? prevSnapshot : n));
+        }
         setSyncStatus('error');
       } else {
         setSyncStatus('saved');
       }
     } else {
-      const updatedNotes = notes.map(n => n.id === id ? { ...n, ...updatedFields } : n);
-      localStorage.setItem('ar_columnist_notes', JSON.stringify(updatedNotes));
       setSyncStatus('saved');
     }
 
@@ -817,9 +835,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteNote = async (id: string) => {
-    setNotes(prev => prev.filter(n => n.id !== id));
+    let remaining: Note[] = [];
+    setNotes(prev => {
+      remaining = prev.filter(n => n.id !== id);
+      localStorage.setItem('ar_columnist_notes', JSON.stringify(remaining));
+      return remaining;
+    });
     if (activeNoteId === id) {
-      const remaining = notes.filter(n => n.id !== id);
       setActiveNoteId(remaining.length > 0 ? remaining[0].id : null);
     }
 
@@ -828,9 +850,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error) {
         console.error('Error eliminando nota en Supabase:', error);
       }
-    } else {
-      const updatedNotes = notes.filter(n => n.id !== id);
-      localStorage.setItem('ar_columnist_notes', JSON.stringify(updatedNotes));
     }
   };
 
@@ -855,40 +874,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ...newTask,
         id: 'task_' + Math.random().toString(36).substr(2, 9)
       };
-      const updatedTasks = [...tasks, created];
-      setTasks(updatedTasks);
-      localStorage.setItem('ar_columnist_tasks', JSON.stringify(updatedTasks));
     }
 
-    setTasks(prev => [...prev, created]);
+    setTasks(prev => {
+      const updated = [...prev, created];
+      if (!isDbConnected) localStorage.setItem('ar_columnist_tasks', JSON.stringify(updated));
+      return updated;
+    });
     return created;
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    setTasks(prev => {
+      const updated = prev.map(t => t.id === id ? { ...t, ...updates } : t);
+      localStorage.setItem('ar_columnist_tasks', JSON.stringify(updated));
+      return updated;
+    });
 
     if (isDbConnected && supabase) {
       const { error } = await supabase.from('tasks').update(updates).eq('id', id);
       if (error) {
         console.error('Error actualizando tarea en Supabase:', error);
       }
-    } else {
-      const updatedTasks = tasks.map(t => t.id === id ? { ...t, ...updates } : t);
-      localStorage.setItem('ar_columnist_tasks', JSON.stringify(updatedTasks));
     }
   };
 
   const deleteTask = async (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
+    setTasks(prev => {
+      const updated = prev.filter(t => t.id !== id);
+      localStorage.setItem('ar_columnist_tasks', JSON.stringify(updated));
+      return updated;
+    });
 
     if (isDbConnected && supabase) {
       const { error } = await supabase.from('tasks').delete().eq('id', id);
       if (error) {
         console.error('Error eliminando tarea en Supabase:', error);
       }
-    } else {
-      const updatedTasks = tasks.filter(t => t.id !== id);
-      localStorage.setItem('ar_columnist_tasks', JSON.stringify(updatedTasks));
     }
   };
 
@@ -968,16 +990,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteEvent = async (id: string) => {
-    setEvents(prev => prev.filter(e => e.id !== id));
+    setEvents(prev => {
+      const updated = prev.filter(e => e.id !== id);
+      localStorage.setItem('ar_columnist_events', JSON.stringify(updated));
+      return updated;
+    });
 
     if (isDbConnected && supabase) {
       const { error } = await supabase.from('events').delete().eq('id', id);
       if (error) {
         console.error('Error eliminando evento en Supabase:', error);
       }
-    } else {
-      const updatedEvents = events.filter(e => e.id !== id);
-      localStorage.setItem('ar_columnist_events', JSON.stringify(updatedEvents));
     }
   };
 
@@ -1050,9 +1073,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
     }
-    if (published) {
-      updateNote(noteId, { status: 'published' }).catch(console.warn);
-    }
+    updateNote(noteId, { status: published ? 'published' : 'draft' }).catch(console.warn);
   };
 
   return (

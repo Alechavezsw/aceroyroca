@@ -26,6 +26,11 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Método no permitido' });
+    return;
+  }
+
   try {
     const apiKey = process.env.METALS_API_KEY;
     if (apiKey) {
@@ -37,6 +42,7 @@ export default async function handler(req: any, res: any) {
         if (data?.rates) {
           const items = [
             { symbol: 'COBRE', name: 'Cobre (LME)', price: data.rates.XCU ? 1 / data.rates.XCU : 4.52, unit: 'USD/lb', change: 0 },
+            { symbol: 'LITIO', name: 'Litio (Li2CO3)', price: 14200, unit: 'USD/t', change: 0 },
             { symbol: 'ORO', name: 'Oro', price: data.rates.XAU ? 1 / data.rates.XAU : 2340, unit: 'USD/oz', change: 0 },
             { symbol: 'PLATA', name: 'Plata', price: data.rates.XAG ? 1 / data.rates.XAG : 29, unit: 'USD/oz', change: 0 }
           ];

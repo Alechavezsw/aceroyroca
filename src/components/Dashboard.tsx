@@ -54,7 +54,7 @@ export const Dashboard: React.FC = () => {
       const res = await fetch('/api/commodities');
       const data = await res.json();
       if (data.items) setCommodities(data.items);
-    } catch { /* fallback static in UI */ }
+    } catch (e) { console.warn('Error fetching commodities:', e); }
   };
 
   useEffect(() => { fetchCommodities(); }, []);

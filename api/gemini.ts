@@ -61,7 +61,7 @@ export default async function handler(req: any, res: any) {
       content: response.text || ''
     });
   } catch (error: any) {
-    const fallbackModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.5-flash'];
+    const fallbackModels = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
     const fallbacks = fallbackModels.filter(m => m !== requestedModel);
 
     for (const fallback of fallbacks) {

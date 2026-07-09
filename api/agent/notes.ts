@@ -27,9 +27,10 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === 'POST') {
       const { title, content, status } = req.body;
+      const words_count = content ? content.split(/\s+/).filter(Boolean).length : 0;
       const { data, error } = await supabase
         .from('notes')
-        .insert([{ title, content, status: status || 'draft' }])
+        .insert([{ title, content, status: status || 'draft', words_count, updated_at: new Date().toISOString() }])
         .select()
         .single();
 
