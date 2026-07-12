@@ -4,6 +4,8 @@ import { BriefingButton } from './MorningBriefing';
 import { matchNewsToProjects, getWatchlistProjectNames } from '../utils/projectWatchlist';
 import { DeadlineBanner } from './DeadlineBanner';
 import { SkeletonNews } from './Skeleton';
+import { WeeklyNoteGoal } from './WeeklyNoteGoal';
+import { getWeeklyNoteGoalStats } from '../utils/weeklyNoteGoals';
 
 import { 
   FileText, 
@@ -40,7 +42,7 @@ interface NewsMeta {
 }
 
 export const Dashboard: React.FC = () => {
-  const { notes, tasks, events, config, setActiveSection, setActiveNoteId, createDraftFromSource, watchlist } = useApp();
+  const { notes, tasks, events, config, setActiveSection, setActiveNoteId, createDraftFromSource, watchlist, paymentEntries } = useApp();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loadingNews, setLoadingNews] = useState(true);
   const [newsError, setNewsError] = useState(false);
@@ -100,6 +102,7 @@ export const Dashboard: React.FC = () => {
   // Calcular métricas
   const totalNotes = notes.length;
   const totalWords = notes.reduce((sum, n) => sum + (n.words_count || 0), 0);
+  const weeklyGoal = getWeeklyNoteGoalStats(notes, paymentEntries);
   
   const pendingTasks = tasks.filter(t => t.status !== 'published').length;
 
@@ -266,6 +269,10 @@ export const Dashboard: React.FC = () => {
           </button>
         </div>
       </header>
+
+      <div className="stagger-3">
+        <WeeklyNoteGoal stats={weeklyGoal} />
+      </div>
 
       <section className="metrics-grid stagger-3">
         <div className="glass-panel metric-card metric-card--lime">

@@ -18,6 +18,8 @@ import {
   type ProposalType,
   type PaymentEntry
 } from '../utils/paymentTracker';
+import { WeeklyNoteGoal } from './WeeklyNoteGoal';
+import { getWeeklyNoteGoalStats } from '../utils/weeklyNoteGoals';
 
 export const PaymentPanel: React.FC = () => {
   const {
@@ -55,6 +57,11 @@ export const PaymentPanel: React.FC = () => {
     return [...keys].sort((a, b) => b.localeCompare(a));
   }, [paymentEntries, currentWeekKey]);
 
+  const weeklyGoal = useMemo(
+    () => getWeeklyNoteGoalStats(notes, paymentEntries, selectedWeek),
+    [notes, paymentEntries, selectedWeek]
+  );
+
   const handleAdd = () => {
     const title =
       newTitle.trim() ||
@@ -88,6 +95,8 @@ export const PaymentPanel: React.FC = () => {
           </p>
         </div>
       </header>
+
+      <WeeklyNoteGoal stats={weeklyGoal} compact />
 
       <div className="payment-week-bar glass-panel">
         <div className="payment-week-bar__select">
