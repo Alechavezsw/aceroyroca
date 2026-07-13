@@ -42,7 +42,7 @@ interface NewsMeta {
 }
 
 export const Dashboard: React.FC = () => {
-  const { notes, tasks, events, config, setActiveSection, setActiveNoteId, createDraftFromSource, watchlist, paymentEntries } = useApp();
+  const { notes, tasks, events, config, setActiveSection, setActiveNoteId, createDraftFromSource, watchlist, taskPublishedLog } = useApp();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loadingNews, setLoadingNews] = useState(true);
   const [newsError, setNewsError] = useState(false);
@@ -102,7 +102,7 @@ export const Dashboard: React.FC = () => {
   // Calcular métricas
   const totalNotes = notes.length;
   const totalWords = notes.reduce((sum, n) => sum + (n.words_count || 0), 0);
-  const weeklyGoal = getWeeklyNoteGoalStats(notes, paymentEntries);
+  const weeklyGoal = getWeeklyNoteGoalStats(taskPublishedLog);
   
   const pendingTasks = tasks.filter(t => t.status !== 'published').length;
 

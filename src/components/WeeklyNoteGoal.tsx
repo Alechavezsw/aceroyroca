@@ -30,7 +30,7 @@ export const WeeklyNoteGoal: React.FC<WeeklyNoteGoalProps> = ({ stats, compact =
         <div className="weekly-goal__title-row">
           <Target size={compact ? 16 : 18} className="text-accent-gold" />
           <div>
-            <h3 className="weekly-goal__title">Objetivo semanal de notas</h3>
+            <h3 className="weekly-goal__title">Objetivo semanal · notas publicadas</h3>
             {!compact && (
               <p className="weekly-goal__week">{stats.weekLabel}</p>
             )}
@@ -66,9 +66,6 @@ export const WeeklyNoteGoal: React.FC<WeeklyNoteGoalProps> = ({ stats, compact =
       <p className="weekly-goal__msg">
         <TrendingUp size={12} />
         {message}
-        {stats.publishedCount > 0 && (
-          <span className="weekly-goal__pub"> · {stats.publishedCount} publicadas</span>
-        )}
       </p>
     </section>
   );

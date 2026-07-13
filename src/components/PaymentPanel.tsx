@@ -29,7 +29,8 @@ export const PaymentPanel: React.FC = () => {
     updatePaymentEntry,
     deletePaymentEntry,
     markWeekPaid,
-    getCurrentWeekKey
+    getCurrentWeekKey,
+    taskPublishedLog
   } = useApp();
 
   const [selectedWeek, setSelectedWeek] = useState(getCurrentWeekKey());
@@ -58,8 +59,8 @@ export const PaymentPanel: React.FC = () => {
   }, [paymentEntries, currentWeekKey]);
 
   const weeklyGoal = useMemo(
-    () => getWeeklyNoteGoalStats(notes, paymentEntries, selectedWeek),
-    [notes, paymentEntries, selectedWeek]
+    () => getWeeklyNoteGoalStats(taskPublishedLog, selectedWeek),
+    [taskPublishedLog, selectedWeek]
   );
 
   const handleAdd = () => {

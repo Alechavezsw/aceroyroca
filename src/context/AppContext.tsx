@@ -40,6 +40,12 @@ import {
   type PaymentEntry,
   type ProposalType
 } from '../utils/paymentTracker';
+import {
+  loadTaskPublishedLog,
+  saveTaskPublishedLog,
+  reconcileTaskPublishedLog,
+  type TaskPublishedLog
+} from '../utils/weeklyNoteGoals';
 
 // Interfaces
 export interface Note {
@@ -164,6 +170,7 @@ interface AppContextType {
   syncStatus: SyncStatus;
 
   paymentEntries: PaymentEntry[];
+  taskPublishedLog: TaskPublishedLog;
   addPaymentEntry: (data: {
     title: string;
     noteId?: string | null;
@@ -315,9 +322,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [watchlist, setWatchlist] = useState<string[]>(loadWatchlist());
   const [briefingHistory, setBriefingHistory] = useState<BriefingEntry[]>(loadBriefingHistory());
   const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>(loadPaymentEntries());
+  const [taskPublishedLog, setTaskPublishedLog] = useState<TaskPublishedLog>(() => loadTaskPublishedLog());
   const [autoBriefingOpen, setAutoBriefingOpen] = useState(false);
   const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoBriefingRan = React.useRef(false);
+
+  // Reconciliar el log de tarjetas publicadas contra el kanban cargado
+  const applyPublishedLog = (currentTasks: Task[], previousTasks: Task[] = []) => {
+    setTaskPublishedLog(prev => {
+      const next = reconcileTaskPublishedLog(prev, currentTasks, previousTasks);
+      saveTaskPublishedLog(next);
+      return next;
+    });
+  };
 
   // Cargar datos (Supabase o LocalStorage)
   useEffect(() => {
@@ -450,6 +467,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setNotes(notesRes.data || []);
           setTasks(tasksRes.data || []);
           setEvents(eventsRes.data || []);
+          const cachedTasks: Task[] = safeJSON(localStorage.getItem('ar_columnist_tasks') || '[]', []);
+          applyPublishedLog(tasksRes.data || [], cachedTasks);
           setIsDbConnected(true);
 
           if (notesRes.data && notesRes.data.length > 0) {
@@ -548,6 +567,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotes(loadedNotes);
     setTasks(loadedTasks);
     setEvents(loadedEvents);
+    applyPublishedLog(loadedTasks);
     
     if (loadedNotes.length > 0) {
       setActiveNoteId(loadedNotes[0].id);
@@ -887,6 +907,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
+    if (updates.status) {
+      const prevTask = tasks.find(t => t.id === id);
+      if (updates.status === 'published' && prevTask && prevTask.status !== 'published') {
+        setTaskPublishedLog(prev => {
+          const next = { ...prev, [id]: new Date().toISOString() };
+          saveTaskPublishedLog(next);
+          return next;
+        });
+      } else if (updates.status !== 'published') {
+        setTaskPublishedLog(prev => {
+          if (!prev[id]) return prev;
+          const next = { ...prev };
+          delete next[id];
+          saveTaskPublishedLog(next);
+          return next;
+        });
+      }
+    }
+
     setTasks(prev => {
       const updated = prev.map(t => t.id === id ? { ...t, ...updates } : t);
       localStorage.setItem('ar_columnist_tasks', JSON.stringify(updated));
@@ -1121,6 +1160,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAutoBriefingOpen,
       syncStatus,
       paymentEntries,
+      taskPublishedLog,
       addPaymentEntry,
       updatePaymentEntry,
       deletePaymentEntry,

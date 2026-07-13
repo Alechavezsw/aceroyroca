@@ -1,6 +1,5 @@
 import { getWeekKey, getWeekStartSaturday, getWeekEndFriday, formatWeekRange } from './paymentTracker';
-import type { Note } from '../context/AppContext';
-import type { PaymentEntry } from './paymentTracker';
+import type { Task } from '../context/AppContext';
 
 export const WEEKLY_NOTE_GOALS = {
   minimo: 7,
@@ -10,9 +9,13 @@ export const WEEKLY_NOTE_GOALS = {
 
 export type WeeklyGoalTier = 'bajo' | 'minimo' | 'ideal' | 'super';
 
+/** taskId → fecha ISO en que la tarjeta pasó a "publicada" en el kanban */
+export type TaskPublishedLog = Record<string, string>;
+
+const PUBLISHED_LOG_KEY = 'ar_task_published_log';
+
 export interface WeeklyNoteGoalStats {
   count: number;
-  publishedCount: number;
   weekKey: string;
   weekLabel: string;
   tier: WeeklyGoalTier;
@@ -33,18 +36,58 @@ function isDateInWeek(isoDate: string, weekKey: string): boolean {
   return d >= start && d <= end;
 }
 
-export function countNotesCreatedInWeek(notes: Note[], weekKey: string = getWeekKey()): number {
-  return notes.filter(n => isDateInWeek(n.created_at, weekKey)).length;
+export function loadTaskPublishedLog(): TaskPublishedLog {
+  try {
+    const raw = localStorage.getItem(PUBLISHED_LOG_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed as TaskPublishedLog;
+    }
+  } catch {
+    /* fallthrough */
+  }
+  return {};
 }
 
-export function countNotesPublishedInWeek(
-  notes: Note[],
-  paymentEntries: PaymentEntry[],
+export function saveTaskPublishedLog(log: TaskPublishedLog): void {
+  localStorage.setItem(PUBLISHED_LOG_KEY, JSON.stringify(log));
+}
+
+/**
+ * Ajusta el log contra el estado real del kanban:
+ * - Tarjeta publicada sin registro: si antes se la vio en otra etapa, se anota ahora
+ *   (transición real); si no hay historia previa, se usa su created_at para no
+ *   inflar la semana corriente con tarjetas viejas.
+ * - Tarjeta que volvió a otra etapa: se borra su registro (deja de contar).
+ */
+export function reconcileTaskPublishedLog(
+  log: TaskPublishedLog,
+  currentTasks: Task[],
+  previousTasks: Task[] = []
+): TaskPublishedLog {
+  const next: TaskPublishedLog = { ...log };
+  const prevStatus = new Map(previousTasks.map(t => [t.id, t.status]));
+
+  for (const task of currentTasks) {
+    if (task.status === 'published') {
+      if (!next[task.id]) {
+        const wasKnownUnpublished =
+          prevStatus.has(task.id) && prevStatus.get(task.id) !== 'published';
+        next[task.id] = wasKnownUnpublished ? new Date().toISOString() : task.created_at;
+      }
+    } else if (next[task.id]) {
+      delete next[task.id];
+    }
+  }
+
+  return next;
+}
+
+export function countTasksPublishedInWeek(
+  log: TaskPublishedLog,
   weekKey: string = getWeekKey()
 ): number {
-  const fromPayments = paymentEntries.filter(e => e.weekKey === weekKey && e.published).length;
-  if (fromPayments > 0) return fromPayments;
-  return notes.filter(n => n.status === 'published' && isDateInWeek(n.updated_at, weekKey)).length;
+  return Object.values(log).filter(iso => isDateInWeek(iso, weekKey)).length;
 }
 
 export function getWeeklyGoalTier(count: number): WeeklyGoalTier {
@@ -55,12 +98,10 @@ export function getWeeklyGoalTier(count: number): WeeklyGoalTier {
 }
 
 export function getWeeklyNoteGoalStats(
-  notes: Note[],
-  paymentEntries: PaymentEntry[] = [],
+  publishedLog: TaskPublishedLog,
   weekKey: string = getWeekKey()
 ): WeeklyNoteGoalStats {
-  const count = countNotesCreatedInWeek(notes, weekKey);
-  const publishedCount = countNotesPublishedInWeek(notes, paymentEntries, weekKey);
+  const count = countTasksPublishedInWeek(publishedLog, weekKey);
   const tier = getWeeklyGoalTier(count);
 
   const tierLabel =
@@ -87,7 +128,6 @@ export function getWeeklyNoteGoalStats(
 
   return {
     count,
-    publishedCount,
     weekKey,
     weekLabel: formatWeekRange(weekKey),
     tier,
