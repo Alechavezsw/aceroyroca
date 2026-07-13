@@ -3,9 +3,9 @@ import type { Note } from '../context/AppContext';
 import type { PaymentEntry } from './paymentTracker';
 
 export const WEEKLY_NOTE_GOALS = {
-  minimo: 10,
-  ideal: 14,
-  super: 20
+  minimo: 7,
+  ideal: 10,
+  super: 14
 } as const;
 
 export type WeeklyGoalTier = 'bajo' | 'minimo' | 'ideal' | 'super';
@@ -69,11 +69,11 @@ export function getWeeklyNoteGoalStats(
       : tier === 'ideal'
         ? 'Ideal'
         : tier === 'minimo'
-          ? 'Mínimo'
+          ? 'Bien'
           : 'En camino';
 
   let nextTarget: number | null = WEEKLY_NOTE_GOALS.minimo;
-  let nextTargetLabel: string | null = 'mínimo';
+  let nextTargetLabel: string | null = 'bien';
   if (count >= WEEKLY_NOTE_GOALS.super) {
     nextTarget = null;
     nextTargetLabel = null;

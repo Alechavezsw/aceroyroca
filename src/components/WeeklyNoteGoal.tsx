@@ -21,8 +21,8 @@ export const WeeklyNoteGoal: React.FC<WeeklyNoteGoalProps> = ({ stats, compact =
       : stats.tier === 'ideal'
         ? `Ideal alcanzado. Faltan ${stats.remainingToSuper} para super (${superGoal}).`
         : stats.tier === 'minimo'
-          ? `Mínimo cumplido. Faltan ${stats.remainingToIdeal} para ideal (${ideal}).`
-          : `Faltan ${stats.remainingToMin} para el mínimo (${minimo}).`;
+          ? `Semana bien. Faltan ${stats.remainingToIdeal} para ideal (${ideal}).`
+          : `Faltan ${stats.remainingToMin} para una semana bien (${minimo}).`;
 
   return (
     <section className={`weekly-goal glass-panel ${compact ? 'weekly-goal--compact' : ''} weekly-goal--${stats.tier}`}>
@@ -47,13 +47,13 @@ export const WeeklyNoteGoal: React.FC<WeeklyNoteGoalProps> = ({ stats, compact =
 
       <div className="weekly-goal__bar" role="progressbar" aria-valuenow={stats.count} aria-valuemin={0} aria-valuemax={superGoal}>
         <div className="weekly-goal__fill" style={{ width: `${stats.progressPct}%` }} />
-        <span className="weekly-goal__marker" style={{ left: `${markerMin}%` }} title={`Mínimo ${minimo}`} />
+        <span className="weekly-goal__marker" style={{ left: `${markerMin}%` }} title={`Bien ${minimo}`} />
         <span className="weekly-goal__marker weekly-goal__marker--ideal" style={{ left: `${markerIdeal}%` }} title={`Ideal ${ideal}`} />
       </div>
 
       <div className="weekly-goal__tiers">
         <span className={stats.count >= minimo ? 'is-done' : ''}>
-          Mín. {minimo}
+          Bien {minimo}
         </span>
         <span className={stats.count >= ideal ? 'is-done' : ''}>
           Ideal {ideal}
