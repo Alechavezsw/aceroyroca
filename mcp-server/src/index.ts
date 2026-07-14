@@ -1,6 +1,22 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+// Carga mcp-server/.env (las variables ya presentes en el entorno tienen prioridad)
+try {
+  const envPath = join(dirname(fileURLToPath(import.meta.url)), '..', '.env');
+  for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+    const match = line.match(/^\s*([\w.]+)\s*=\s*(.*)\s*$/);
+    if (match && !line.trim().startsWith('#') && !(match[1] in process.env)) {
+      process.env[match[1]] = match[2].replace(/^["']|["']$/g, '');
+    }
+  }
+} catch {
+  /* sin .env: se usan las variables del entorno */
+}
 
 const API_URL = (process.env.ACERO_API_URL || '').replace(/\/$/, '');
 const API_KEY = process.env.AGENT_API_KEY || '';
