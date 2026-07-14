@@ -16,6 +16,7 @@ import { CommandSearch } from './components/CommandSearch';
 import { PaymentPanel } from './components/PaymentPanel';
 import { BriefingModal } from './components/MorningBriefing';
 import { WordPressImageTool } from './components/WordPressImageTool';
+import { ContactsPanel } from './components/ContactsPanel';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 const MainAppContent: React.FC = () => {
@@ -52,6 +53,8 @@ const MainAppContent: React.FC = () => {
         return <CalendarView />;
       case 'payments':
         return <PaymentPanel />;
+      case 'contacts':
+        return <ContactsPanel />;
       case 'wordpress-images':
         return <WordPressImageTool />;
       case 'settings':

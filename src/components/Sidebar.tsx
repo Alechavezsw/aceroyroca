@@ -15,7 +15,8 @@ import {
   BookMarked,
   LogOut,
   Wallet,
-  ImageIcon
+  ImageIcon,
+  Users
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { SyncIndicator } from './SyncIndicator';
@@ -38,6 +39,7 @@ export const Sidebar: React.FC = () => {
     { id: 'tasks', label: 'Tablero Kanban', icon: KanbanSquare },
     { id: 'payments', label: 'Pagos', icon: Wallet },
     { id: 'calendar', label: 'Agenda', icon: Calendar },
+    { id: 'contacts', label: 'Contactos', icon: Users },
     { id: 'settings', label: 'Ajustes', icon: Settings },
   ];
 

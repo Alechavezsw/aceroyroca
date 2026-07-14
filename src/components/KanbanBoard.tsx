@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Task } from '../context/AppContext';
 
-import { 
-  Plus, 
-  Trash2, 
-  Calendar, 
-  Link2, 
-  ChevronRight, 
+import {
+  Plus,
+  Trash2,
+  Calendar,
+  Link2,
+  ChevronRight,
   ChevronLeft,
   X,
-  PlusCircle
+  PlusCircle,
+  CheckCircle2
 } from 'lucide-react';
 
 const COLUMNS: { id: Task['status']; label: string; color: string }[] = [
@@ -22,7 +23,7 @@ const COLUMNS: { id: Task['status']; label: string; color: string }[] = [
 ];
 
 export const KanbanBoard: React.FC = () => {
-  const { tasks, notes, createTask, updateTask, deleteTask, setActiveSection, setActiveNoteId } = useApp();
+  const { tasks, notes, createTask, updateTask, deleteTask, setActiveSection, setActiveNoteId, workingTaskIds, toggleTaskWorking } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [activeColForNewTask, setActiveColForNewTask] = useState<Task['status']>('ideas');
 
@@ -135,17 +136,20 @@ export const KanbanBoard: React.FC = () => {
 
               {/* Lista de Tarjetas */}
               <div className="flex-1 flex flex-col gap-2 overflow-y-auto pr-1">
-                {colTasks.map((task) => (
+                {colTasks.map((task) => {
+                  const isWorking = col.id === 'drafting' && workingTaskIds.includes(task.id);
+                  return (
                   <div
                     key={task.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, task.id)}
                     className="kanban-card glass-panel"
+                    style={isWorking ? { boxShadow: '0 0 0 1px rgba(52,211,153,0.5), 0 0 12px rgba(52,211,153,0.2)' } : undefined}
                   >
                     <div className="flex justify-between items-start gap-1">
                       <span className={`text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded ${
-                        task.priority === 'high' 
-                          ? 'bg-red-500/15 text-red-400 border border-red-500/20' 
+                        task.priority === 'high'
+                          ? 'bg-red-500/15 text-red-400 border border-red-500/20'
                           : task.priority === 'medium'
                           ? 'bg-accent-gold/15 text-accent-gold border border-accent-gold/20'
                           : 'bg-blue-500/15 text-blue-400 border border-blue-500/20'
@@ -153,14 +157,36 @@ export const KanbanBoard: React.FC = () => {
                         {task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja'}
                       </span>
 
-                      <button 
-                        onClick={() => deleteTask(task.id)}
-                        className="text-text-muted hover:text-accent-red p-1 rounded hover:bg-white/5 transition-colors"
-                        title="Eliminar tarea"
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      <div className="flex items-center">
+                        {col.id === 'drafting' && (
+                          <button
+                            onClick={() => toggleTaskWorking(task.id)}
+                            className={`p-1 rounded transition-colors ${
+                              isWorking
+                                ? 'text-emerald-400 animate-pulse'
+                                : 'text-text-muted hover:text-emerald-400 hover:bg-white/5'
+                            }`}
+                            title={isWorking ? 'Trabajando en esta nota (clic para desmarcar)' : 'Marcar que estás trabajando en esta nota'}
+                          >
+                            <CheckCircle2 size={13} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteTask(task.id)}
+                          className="text-text-muted hover:text-accent-red p-1 rounded hover:bg-white/5 transition-colors"
+                          title="Eliminar tarea"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </div>
+
+                    {isWorking && (
+                      <span className="inline-flex items-center gap-1 mt-2 text-[9px] uppercase font-extrabold text-emerald-400 tracking-wider">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Escribiendo ahora
+                      </span>
+                    )}
 
                     <h4 className="text-xs font-bold text-white mt-2 mb-1 leading-snug">{task.title}</h4>
                     <p className="text-[11px] text-text-secondary line-clamp-3 leading-normal mb-3">{task.description}</p>
@@ -203,7 +229,8 @@ export const KanbanBoard: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

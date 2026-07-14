@@ -7,7 +7,8 @@ const STORE_KEYS = {
   COURSE_PROGRESS: 'course_progress',
   WATCHLIST: 'watchlist',
   BRIEFING_HISTORY: 'briefing_history',
-  PAYMENT_ENTRIES: 'payment_entries'
+  PAYMENT_ENTRIES: 'payment_entries',
+  CONTACTS: 'contacts'
 } as const;
 
 export { STORE_KEYS };
@@ -146,6 +147,14 @@ export async function fetchPaymentEntries(): Promise<import('./paymentTracker').
 
 export async function savePaymentEntriesRemote(entries: import('./paymentTracker').PaymentEntry[]): Promise<void> {
   await saveEditorialStore(STORE_KEYS.PAYMENT_ENTRIES, entries);
+}
+
+export async function fetchContacts(): Promise<import('../context/AppContext').Contact[] | null> {
+  return fetchEditorialStore<import('../context/AppContext').Contact[]>(STORE_KEYS.CONTACTS);
+}
+
+export async function saveContactsRemote(contacts: import('../context/AppContext').Contact[]): Promise<void> {
+  await saveEditorialStore(STORE_KEYS.CONTACTS, contacts);
 }
 
 export function mergeGlossary(local: GlossaryTerm[], remote: GlossaryTerm[]): GlossaryTerm[] {

@@ -18,7 +18,9 @@ import {
   fetchUserConfigFromDb,
   saveUserConfigToDb,
   fetchPaymentEntries,
-  savePaymentEntriesRemote
+  savePaymentEntriesRemote,
+  fetchContacts,
+  saveContactsRemote
 } from '../utils/editorialSync';
 import {
   buildBriefingPrompt,
@@ -81,6 +83,17 @@ export interface CalendarEvent {
   created_at: string;
 }
 
+export interface Contact {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  company: string;
+  role?: string;
+  notes?: string;
+  addedAt: string;
+}
+
 export interface GlossaryTerm {
   id: string;
   term: string;
@@ -137,11 +150,18 @@ interface AppContextType {
   createTask: (task: Omit<Task, 'id' | 'created_at'>) => Promise<Task>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  workingTaskIds: string[];
+  toggleTaskWorking: (id: string) => void;
   
   // Eventos API
   createEvent: (event: Omit<CalendarEvent, 'id' | 'created_at'>) => Promise<CalendarEvent>;
   updateEvent: (id: string, updates: Partial<CalendarEvent>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
+
+  contacts: Contact[];
+  addContact: (data: Omit<Contact, 'id' | 'addedAt'>) => void;
+  updateContact: (id: string, updates: Partial<Omit<Contact, 'id' | 'addedAt'>>) => void;
+  deleteContact: (id: string) => void;
 
   glossary: GlossaryTerm[];
   addGlossaryTerm: (term: string, definition: string, opts?: { source?: string; category?: string; example?: string }) => boolean;
@@ -323,6 +343,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [briefingHistory, setBriefingHistory] = useState<BriefingEntry[]>(loadBriefingHistory());
   const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>(loadPaymentEntries());
   const [taskPublishedLog, setTaskPublishedLog] = useState<TaskPublishedLog>(() => loadTaskPublishedLog());
+  const [workingTaskIds, setWorkingTaskIds] = useState<string[]>(() =>
+    safeJSON<string[]>(localStorage.getItem('ar_working_tasks'), [])
+  );
+  const [contacts, setContacts] = useState<Contact[]>(() =>
+    safeJSON<Contact[]>(localStorage.getItem('ar_contacts'), [])
+  );
   const [autoBriefingOpen, setAutoBriefingOpen] = useState(false);
   const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoBriefingRan = React.useRef(false);
@@ -378,6 +404,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       let mergedWatchlist = loadWatchlist();
       let mergedBriefingHistory = loadBriefingHistory();
       let mergedPayments = loadPaymentEntries();
+      let mergedContacts = safeJSON<Contact[]>(localStorage.getItem('ar_contacts'), []);
 
       const savedCourse = localStorage.getItem('ar_course_progress');
       if (savedCourse) {
@@ -414,13 +441,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (tasksRes.error) throw tasksRes.error;
           if (eventsRes.error) throw eventsRes.error;
 
-          const [remoteGlossary, remoteCourses, remoteProgress, remoteWatchlist, remoteBriefings, remotePayments] = await Promise.all([
+          const [remoteGlossary, remoteCourses, remoteProgress, remoteWatchlist, remoteBriefings, remotePayments, remoteContacts] = await Promise.all([
             fetchGlossaryFromDb().catch(() => []),
             fetchCustomCourses().catch(() => []),
             fetchCourseProgress().catch(() => null),
             fetchWatchlist().catch(() => []),
             fetchBriefingHistory().catch(() => []),
-            fetchPaymentEntries().catch(() => [])
+            fetchPaymentEntries().catch(() => []),
+            fetchContacts().catch(() => [])
           ]);
 
           if (remoteGlossary.length) {
@@ -457,12 +485,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             savePaymentEntriesRemote(mergedPayments).catch(console.warn);
           }
 
+          if (remoteContacts?.length) {
+            mergedContacts = remoteContacts;
+            localStorage.setItem('ar_contacts', JSON.stringify(mergedContacts));
+          } else if (mergedContacts.length) {
+            saveContactsRemote(mergedContacts).catch(console.warn);
+          }
+
           setGlossary(mergedGlossary);
           setCourses(mergedCourses);
           setCourseProgress(mergedProgress);
           setWatchlist(mergedWatchlist);
           setBriefingHistory(mergedBriefingHistory);
           setPaymentEntries(mergedPayments);
+          setContacts(mergedContacts);
 
           setNotes(notesRes.data || []);
           setTasks(tasksRes.data || []);
@@ -906,7 +942,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return created;
   };
 
+  const persistWorkingTasks = (ids: string[]) => {
+    localStorage.setItem('ar_working_tasks', JSON.stringify(ids));
+  };
+
+  const toggleTaskWorking = (id: string) => {
+    setWorkingTaskIds(prev => {
+      const updated = prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id];
+      persistWorkingTasks(updated);
+      return updated;
+    });
+  };
+
   const updateTask = async (id: string, updates: Partial<Task>) => {
+    // Si la tarjeta sale de redacción, deja de estar "en trabajo"
+    if (updates.status && updates.status !== 'drafting') {
+      setWorkingTaskIds(prev => {
+        if (!prev.includes(id)) return prev;
+        const updated = prev.filter(t => t !== id);
+        persistWorkingTasks(updated);
+        return updated;
+      });
+    }
+
     if (updates.status) {
       const prevTask = tasks.find(t => t.id === id);
       if (updates.status === 'published' && prevTask && prevTask.status !== 'published') {
@@ -941,6 +999,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteTask = async (id: string) => {
+    setWorkingTaskIds(prev => {
+      if (!prev.includes(id)) return prev;
+      const updated = prev.filter(t => t !== id);
+      persistWorkingTasks(updated);
+      return updated;
+    });
+
     setTasks(prev => {
       const updated = prev.filter(t => t.id !== id);
       localStorage.setItem('ar_columnist_tasks', JSON.stringify(updated));
@@ -1045,6 +1110,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // --- API DE CONTACTOS ---
+  const persistContacts = (updated: Contact[]) => {
+    localStorage.setItem('ar_contacts', JSON.stringify(updated));
+    if (isDbConnected) saveContactsRemote(updated).catch(console.warn);
+  };
+
+  const addContact = (data: Omit<Contact, 'id' | 'addedAt'>) => {
+    const contact: Contact = {
+      ...data,
+      id: 'c_' + Math.random().toString(36).slice(2, 9),
+      addedAt: new Date().toISOString()
+    };
+    setContacts(prev => {
+      const updated = [contact, ...prev];
+      persistContacts(updated);
+      return updated;
+    });
+  };
+
+  const updateContact = (id: string, updates: Partial<Omit<Contact, 'id' | 'addedAt'>>) => {
+    setContacts(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, ...updates } : c);
+      persistContacts(updated);
+      return updated;
+    });
+  };
+
+  const deleteContact = (id: string) => {
+    setContacts(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      persistContacts(updated);
+      return updated;
+    });
+  };
+
   const persistPaymentEntries = (entries: PaymentEntry[]) => {
     savePaymentEntries(entries);
     savePaymentEntriesRemote(entries).catch(console.warn);
@@ -1135,6 +1235,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createTask,
       updateTask,
       deleteTask,
+      workingTaskIds,
+      toggleTaskWorking,
+      contacts,
+      addContact,
+      updateContact,
+      deleteContact,
       createEvent,
       updateEvent,
       deleteEvent,
